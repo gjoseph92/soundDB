@@ -13,20 +13,23 @@ import inspect
 import pandas as pd
 import re
 
-# TODO:
+# MUST DO:
+# [ ] 2-3 cross-compatibility
+# [ ] Docs, duh
+# [x] (Where) should iterators be consumed
+# [x] Where to sort, if to sort
+# [x] Better default ID for .all
+
+# NICE EVENTUALLY:
+# [ ] Accessor instances have own docstrings: parser docstring plus columns and dtypes of resulting data
+# [ ] Helpful reprs
+# [ ] Progressbar
+# [ ] Auto-parallelization? (or kwarg for @accessor at least)
 # [x] Specifying list of sites (as iterable of dicts/tuples, pandas index, etc) -- here and/or iyore
 # [ ] Specifying list of filepaths/directories *without* iyore
 # [ ] Combining datasets/endpoints -- here and/or iyore
-# [x] (Where) should iterators be consumed
-# [ ] Docs, duh
-# [-] Should GroupbyApplier self-mutate? ==> keeping same model for now, generator comprehesion given to GroupbyApplier is still single-use, plus Pandas is also single-use
-# [x] Where to sort, if to sort
-# [x] Better default ID for .all
-# [ ] Helpful reprs
 # [-] Smart .all that promotes to next-dimensional structure  ==> may not actually be possible: Panel doesn't make sense for any data, as the minor axes (rows) aren't the same for all deployments, since they're timestamps
-# [ ] Progressbar
-# [ ] Auto-parallelization? (or kwarg for @accessor at least)
-# [ ] 2-3 cross-compatibility
+# [-] Should GroupbyApplier self-mutate? ==> keeping same model for now, generator comprehesion given to GroupbyApplier is still single-use, plus Pandas is also single-use
 
 class GroupbyApplier:
     # given iter of (key, pandas.NDFrame)
@@ -78,141 +81,6 @@ class GroupbyApplier:
 
     def __repr__(self):
         return repr(self._chain)
-
-# class GroupbyApplier:
-#     # given iter of (key, pandas.NDFrame)
-#     # all chained attribute access, item access, and method calls are applied to each NDFrame
-#     # calling compute() at end of chain combines the results into a dataframe indexed by key of the iter
-
-#     def __init__(self, iterator, operation= None):
-#         self._iter = iterator
-#         self._operation = operation
-
-#     def compute(self):
-#         results = {key: data for key, data in iter(self)}
-#         try:
-#             # TODO: this is horribly stupid and should actually be checked
-#             return pd.DataFrame(results)
-#         except ValueError:
-#             return pd.Series(results)
-
-#     def __iter__(self):
-#         for key, data in iter(self._iter):
-#             result = data
-#             computed = self._operation(result) if self._operation is not None else result
-#             yield key, computed
-
-#     def __getattr__(self, attr):
-#         op = operator.attrgetter(attr)
-#         next_operation = (lambda df: op(self._operation(df))) if self._operation is not None else op
-#         return GroupbyApplier(self._iter, next_operation)
-
-#     def __getitem__(self, index):
-#         op = operator.itemgetter(index)
-#         next_operation = (lambda df: op(self._operation(df))) if self._operation is not None else op
-#         return GroupbyApplier(self._iter, next_operation)
-
-#     def __call__(self, *args):
-#         op = lambda x: x(*args)
-#         next_operation = (lambda df: op(self._operation(df))) if self._operation is not None else op
-#         return GroupbyApplier(self._iter, next_operation)
-
-
-    # def __repr__(self):
-    #     return repr(self._chain)
-
-
-# class Result:
-#     # given an iterable of Entry where the .data attribute is an NDFrame,
-#     # or a function that returns such an iterable when called (i.e. a generator function)
-
-#     def __init__(self, iterableOrFunc):
-#         if hasattr(iterableOrFunc, "__call__"):
-#             class Regenerator:
-#                 def __init__(self, generator):
-#                     self.generator = generator
-#                 def __iter__(self):
-#                     return self.generator()
-#             iterable = Regenerator(iterableOrFunc)
-#         else:
-#             iterable = iterableOrFunc
-
-#         self._iterable = iterable
-
-#     def groupby(self, *groups):
-#         # endpoint field name(s) str, or function
-#         if len(groups) > 1:
-#             if all(isinstance(group, basestring) for group in groups):
-#                 groupFunc = lambda e: tuple(getattr(e, group) for group in groups)
-#             else:
-#                 raise TypeError("If multiple groups are given, all must be strings")
-#         else:
-#             group = groups[0]
-#             if isinstance(group, basestring):
-#                 groupFunc = operator.attrgetter(group)
-#             else:
-#                 groupFunc = group
-
-#         def concat_maybe(datas):
-#             datas = tuple(datas)
-#             if len(datas) == 1:
-#                 return datas[0]
-#             else:
-#                 return pd.concat(datas)
-
-#         s = sorted(self._iterable, key= groupFunc)
-#         i = ( (key, concat_maybe(e.data for e in subiter)) for key, subiter in itertools.groupby(s, groupFunc))
-#         return GroupbyApplier(i)
-
-#     # def all(self, ID= lambda e: e.unit+e.site+e.year):
-#     #     res = {ID(e): e.data for e in self._iterable}
-#     #     try:
-#     #         joined = pd.concat(res)
-#     #         try:
-#     #             joined.index.set_names("ID", level= 0, inplace= True)
-#     #         except AttributeError:
-#     #             pass
-#     #         return joined
-#     #     except TypeError:
-#     #         return res
-
-#     def all(self, ID= None):
-#         # TODO?: any use case for a predicate/filter for which entries are included in all()? could be used for head() functionality?
-#         if ID is None:
-#             def ID(entry):
-#                 id_elems = []
-#                 if "unit" in entry.fields: id_elems.append(entry.unit)
-#                 if "site" in entry.fields: id_elems.append(entry.site)
-#                 if "year" in entry.fields: id_elems.append(entry.year)
-#                 if len(id_elems) > 0:
-#                     return "".join(id_elems)
-#                 else:
-#                     return entry.path
-
-#         results = collections.defaultdict(list)
-#         # build map of {ID: [data, data, ...]} (same ID may have multiple data, i.e. NVSPL or LA)
-#         for e in self._iterable:
-#             results[ID(e)].append(e.data)
-
-#         # flatten data for each ID by concatenating, or unpacking list if just one dataframe
-#         for ID_name, datas in iteritems(results):
-#             results[ID_name] = pd.concat(datas, copy= False) if len(datas) > 1 else datas[0]
-
-#         try:
-#             joined = pd.concat(results, copy= False)
-#             try:
-#                 joined.index.set_names("ID", level= 0, inplace= True)
-#             except AttributeError:
-#                 pass
-#             return joined
-#         except TypeError:
-#             return res
-
-#     def one(self):
-#         return next(iter(self._iterable))
-
-#     def __iter__(self):
-#         return iter(self._iterable)
 
 
 class Query(object):
@@ -648,81 +516,3 @@ class Accessor(object):
         self.initialFuncKwargs = argspec.args[ -len(argspec.defaults): ]
         if "items" in self.initialFuncKwargs:
             raise TypeError("The keyword argument 'items' is already used by Accessor, please pick a different name")
-
-
-# def accessor(endpointName, result= Result):
-#     """
-#     Decorator which transforms a function that reads a single iyore.Entry and returns a pandas NDFrame
-#     into a function which takes an iyore.Dataset and returns a Result.
-
-#     In other words, it transforms a function for reading a single data file
-#     into a function which reads all of that kind of file from a Dataset.
-
-#     Parameters
-#     ----------
-#     endpointName : string
-#         Name of the Endpoint expected to contain data to be read by the wrapped function, i.e. ``"srcid"``, ``"metrics"``, etc.
-#     """
-
-#     def wrap(accessorFunc):
-#         accessDoc = """Access "{endpointName}" data from a Dataset.
-
-# Say ``ds`` is an iyore.Dataset, containing ``ds.{endpointName}`` as the Endpoint for {funcName} data.
-# If iterating through ``ds.{endpointName}`` yields the *paths* to {funcName} data,
-# iterating through ``{funcName}(ds)`` yields {funcName} data *parsed* into pandas DataFrames, Panels, or Series.
-
-# Given an iyore.Dataset ``ds`` (which has an endpoint "{endpointName}"),
-# ``{funcName}(ds)`` returns a Result object, which can be used in a few ways:
-
-#     - as an iterable, which yields Entry objects whose ``data`` attributes contain pandas structures
-#     - ``.groupby()``: bundle the data into groups by year, site, etc., apply operations to summarize each group,
-#     iterate through the results (like pandas groupby)
-#     - ``.all()``: return a DataFrame or Panel of all the {funcName} data contained in the Dataset
-#     - ``.one()``: return one Entry object whose ``data`` attribute contains a pandas structure (helpful for prototyping and exploration)
-
-# (See the documentation for Result for more details.)
-
-# To filter the data, use keyword arguments for each field of the "{endpointName}" endpoint.
-# For example, ``{funcName}(ds).all()`` would return all {endpointName} data,
-# while ``{funcName}(ds, year= 2014, unit= ["DENA", "WRST"]).all()``
-# would return all {endpointName} data from Denali or Wrangall St. Elias in 2014.
-# See the documentation for iyore.Endpoint for more details.
-
-# Here is the documentation for the function which is called on each {endpointName} file and parses it into a pandas structure:
-
-# {funcDoc}"""
-
-#         def access(ds, **params):
-#             endpoint = getattr(ds, endpointName)
-#             def generate():
-#                 for entry in endpoint(**params):
-#                     try:
-#                         # time and parallelize if appropriate
-#                         entry.data = accessorFunc(entry)
-#                         yield entry
-#                     except GeneratorExit:
-#                         raise GeneratorExit
-#                     except:
-#                         print( traceback.format_exc() )
-
-#             res = result(generate)
-#             return res
-
-#         access.__name__ = accessorFunc.__name__
-#         access.__doc__ = accessDoc.format(endpointName= endpointName, funcName= accessorFunc.__name__, funcDoc= accessorFunc.__doc__)
-#         return access
-#     return wrap
-
-
-# TODO: this is a maybe
-# import functools
-# def regenerator(generator):
-#     class Regenerator:
-#         def __init__(self, generator):
-#             self.generator = generator
-#             # functools.update_wrapper(self, generator)
-#         def __call__(self, *args, **kwargs):
-#             return Regenerator(functools.partial(self.generator, *args, **kwargs))
-#         def __iter__(self):
-#             return self.generator()
-#     return Regenerator(generator)
