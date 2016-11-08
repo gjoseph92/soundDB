@@ -10,6 +10,23 @@ import pandas as pd
 import numpy as np
 import re
 
+"""
+This file containes subclasses of ``Accessor`` for reading each specific kind of data file (NVSPL, SRCID, etc.).
+
+Each subclass should specify:
+
+    - ``endpointName``: name of the ``iyore.Endpoint`` in a Dataset where the kind of data the Accessor handles is found
+
+    - ``parse()``: method which, given an ``iyore.Entry``, parses that single data file into a pandas structure and returns it
+
+    - ``prepareState()`` (optional): method which prepares a ``state`` object to be passed between repeated calls of ``parse``,
+                                     which is only useful for data composed of many files per site (like NVSPL and audibility)
+
+The subclasses should only be defined here, *not* instantiated. In ``__init__.py``, all subclasses of ``Accessor``
+in ``parsers.py`` are automatically detected and instantiated. Then each instance is added to the top-level ``soundDB`` namespace
+under its ``endpointName``.
+"""
+
 # def initializeFastNVSPL(endpoint, endpointParams, timestamps= None, columns= None):
 
 #     columnNames = ['SiteID', 'date', '12.5', '15.8', '20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250', '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000', '10000', '12500', '16000', '20000', 'dBA', 'dBC', 'dBF', 'Voltage', 'WindSpeed', 'WindDir', 'TempIns', 'TempOut', 'Humidity', 'INVID', 'INSID', 'GChar1', 'GChar2', 'GChar3', 'AdjustmentsApplied', 'CalibrationAdjustment', 'GPSTimeAdjustment', 'GainAdjustment', 'Status']
@@ -163,7 +180,7 @@ class NVSPL(Accessor):
         - As an iterable, which yields Entry objects whose ``data`` attributes contain pandas structures.
 
     """
-    
+
     endpointName = "nvspl"
 
     def parse(nvsplFileEntry, state= (None, None, 1)):

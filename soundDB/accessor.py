@@ -87,10 +87,6 @@ class Query(object):
     """
     A structure for holding a selection of data to access, and methods for reading it.
 
-    # A Query gets instantiated to use a certain parsing function to read data from a certain Endpoint,
-    # filtered by certain parameters. (You don't usually create a Query object yourself,
-    # it's what gets returned from accessor functions like `nvspl`, `srcid`, etc.)
-
     Imagine the accessor functions are like custom machine shops. You specify exactly what kind of data you want
     (NVSPL, SRCID, etc.) and where you want it from (which Dataset, and any parameters restricting the year, site, etc.),
     and rather than just giving you the data, they build a custom machine for you that will go out and get exactly that data,
@@ -422,14 +418,11 @@ class Query(object):
 
 class Accessor(object):
     """
-    Decorator-like class for vectorizing functions for parsing singe data files
-    into functions for parsing all of that kind of data file from an Endpoint.
+    Base class to create classes for accessing a specific kind of data from an iyore Dataset.
 
-    The Accessor class simply holds the parser function and endpoint name in one place.
-
-    It also exposes the decorator ``@initialize``, which is used to specify a function
-    to create additional parameters for the parser function which do not need to be recomputed
-    for every file.
+    By subclassing Accessor and implementing a ``parse`` function, which holds the logic for
+    reading a single file of a specific type into a pandas structure, Accessor provides the
+    logic to vectorize that function so it can parse all instances of that data file from an Endpoint.
     """
 
     # Overridden in each subclass: name of the ``iyore.Endpoint`` where the kind of data
