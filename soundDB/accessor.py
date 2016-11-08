@@ -130,7 +130,7 @@ class Query(object):
 
     See the documentation of each of these methods for specifics.
     """
-    def __init__(self, endpoint, endpointParams, parserFunc, initialFunc= None, initialFuncParams= None):
+    def __init__(self, endpoint, endpointFilters, parserFunc, prepareState= None, prepareStateParams= None):
         """
         Instantiate a query. There's no reason you should need to do this yourself.
 
@@ -141,7 +141,7 @@ class Query(object):
 
             The `iyore.Endpoint` from which to access data
 
-        endpointParams : dict
+        endpointFilters : dict
 
             Dict of keyword arguments to give to that Endpoint as filter parameters
 
@@ -149,7 +149,7 @@ class Query(object):
 
             The function to call on every Entry yielded from the Endpoint. Its signature must match:
 
-            def parserFunc(entry: iyore.Entry, [params= default]) -> pandas.NDFrame
+            def parserFunc(entry: iyore.Entry, [state= default]) -> pandas.NDFrame
                  Parse a single file of a specific type in to a pandas structure
             
                  Parameters
@@ -159,41 +159,41 @@ class Query(object):
                      If possible, parsers should not access any attributes from the Entry, and get its path using
                      ``str(entry)`` rather than ``entry.path``, so that the function can also be used with just
                      a string of the path to a file to read.
-                 params : client-determined keyword argument, optional
+                 state : client-determined keyword argument, optional
                      An optional object, created in the initialization function,
                      which is passed into the parser function on every call for a Query.
                      (Often a dict or tuple.) This can be used to pass state between files read.
-                     Though the object is created in ``initialFunc``, it's safe for ``parserFunc``
+                     Though the object is created in ``prepareState``, it's safe for ``parserFunc``
                      to mutate.
 
         Keyword Args
         ------------
 
-        initialFunc : function, default None
+        prepareState : function, default None
 
             A function to create the initial ``params`` object which will be passed into the parserFunc each time it's called.
             Its signature must match:
 
-            def initialFunc(endpoint:iyore.Endpoint, endpointParams: dict, [kwargs...]) -> object
+            def prepareState(endpoint:iyore.Endpoint, endpointFilters: dict, [kwargs...]) -> object
                  Return the ``params`` object which will be passed into ``parserFunc`` on every call for this Query.
                  The params object can be any type (though dict usually makes most sense)
-                 ``initialFunc`` is called once, before each time the Query is used.
+                 ``prepareState`` is called once, before each time the Query is used.
                  When the Query is used (by .all(), .groupby(), etc), any keyword arguments it's given
-                 that match the keyword arguments taken by ``initialFunc`` will be given to ``initialFunc``.
+                 that match the keyword arguments taken by ``prepareState`` will be given to ``prepareState``.
                  Any remaining keyword arguments that do not share the same names are assumed to be parameters to
                  filter the Endpoint. The Endpoint instance, and a dict of these endpoint parameters, are given to
-                 ``initialFunc`` as its first two arguments, in case they're useful.
+                 ``prepareState`` as its first two arguments, in case they're useful.
 
-        initialFuncParams : dict, default None
+        prepareStateParams : dict, default None
 
-            Dict of keyword arguments to give to initialFunc
+            Dict of keyword arguments to give to prepareState
 
         """
         self.endpoint = endpoint
-        self.endpointParams = endpointParams
+        self.endpointFilters = endpointFilters
         self.parserFunc = parserFunc
-        self.initialFunc = initialFunc
-        self.initialFuncParams = initialFuncParams
+        self.prepareState = prepareState
+        self.prepareStateParams = prepareStateParams
 
     def sorted(self, key):
         """
@@ -202,8 +202,10 @@ class Query(object):
         Parameters
         ----------
 
-        key : function
-            A function which takes an Entry and returns a value to be used to determine its sort order,
+        key : str, iterable of str, function
+
+            If ``str`` or iterable of ``str``, should be field(s) of the given Endpoint.
+            If a function, it should take an ``iyore.Entry`` and return a value to be used to determine its sort order,
             i.e. to sort by year, use ``lambda entry: entry.year``
 
         Yields
@@ -212,9 +214,9 @@ class Query(object):
         """
         # TODO: any use case (/ is it possible) to define an explicit ordering rather than a key function?
         # TODO: allow client-facing keys, i.e. *args of strs?
-        params = self.initialFunc(self.endpoint, self.endpointParams, **self.initialFuncParams) if self.initialFunc is not None else None
+        params = self.prepareState(self.endpoint, self.endpointFilters, **self.prepareStateParams) if self.prepareState is not None else None
         def iterate():
-            for entry in self.endpoint(sort= key, **self.endpointParams):
+            for entry in self.endpoint(sort= key, **self.endpointFilters):
                 try:
                     # time and parallelize if appropriate
                     entry.data = self.parserFunc(entry, params= params) if params is not None else self.parserFunc(entry)
@@ -418,60 +420,7 @@ class Query(object):
         return GroupbyApplier(groupedIterator) # maybe pass in Progressbar
 
 
-
-### SIGNATURES
-
-## def parserFunc(entry: iyore.Entry, [params= default]) -> pandas.NDFrame
-##      Parse a single file of a specific type in to a pandas structure
-##
-##      Parameters
-##      ----------
-##      entry : iyore.Entry
-##          An entry for a single file.
-##          If possible, parsers should not access any attributes from the Entry, and get its path using
-##          ``str(entry)`` rather than ``entry.path``, so that the function can also be used with just
-##          a string of the path to a file to read.
-##      params : client-determined keyword argument, optional
-##          An optional object, created in the initialization function,
-##          which is passed into the parser function on every call for a Query.
-##          (Often a dict or tuple.) This can be used to pass state between files read.
-##          Though the object is created in ``initialFunc``, it's safe for ``parserFunc``
-##          to mutate.
-
-## def initialFunc(endpoint:iyore.Endpoint, endpointParams: dict, [kwargs...]) -> object
-##      Return the ``params`` object which will be passed into ``parserFunc`` on every call for this Query.
-##      The params object can be any type (though dict usually makes most sense)
-##      ``initialFunc`` is called once, before each time the Query is used.
-##      When the Query is used (by .all(), .groupby(), etc), any keyword arguments it's given
-##      that match the keyword arguments taken by ``initialFunc`` will be given to ``initialFunc``.
-##      Any remaining keyword arguments that do not share the same names are assumed to be parameters to
-##      filter the Endpoint. The Endpoint instance, and a dict of these endpoint parameters, are given to
-##      ``initialFunc`` as its first two arguments, in case they're useful.
-
-def accessor(endpointName):
-    """
-    Decorator which transforms a function that reads a single iyore.Entry and returns a pandas NDFrame
-    into a function-like Accessor instance which takes an iyore.Dataset and returns a Query
-    (a structure for holding a selection of data to read, and methods for reading it).
-
-    Informally, it transforms a function for reading a single data file
-    into a function which, when called, reads all of that kind of file from a Dataset.
-
-    TODO: signatures and describe @initialize
-
-    Parameters
-    ----------
-    endpointName : string
-        Name of the Endpoint expected to contain data to be read by the wrapped function, i.e. ``"srcid"``, ``"metrics"``, etc.
-    """
-
-    def getParserFuncWrapper(parserFunc):
-        return Accessor(endpointName, parserFunc)
-
-    return getParserFuncWrapper
-
 class Accessor(object):
-    # TODO: each instance needs to set its own __doc__, possibly by manually constructing the class with type() in accessor()
     """
     Decorator-like class for vectorizing functions for parsing singe data files
     into functions for parsing all of that kind of data file from an Endpoint.
@@ -482,12 +431,54 @@ class Accessor(object):
     to create additional parameters for the parser function which do not need to be recomputed
     for every file.
     """
-    def __init__(self, endpointName, parserFunc):
-        self.initialFunc = None
-        self.endpointName = endpointName
-        self.parser = parserFunc
 
-    def __call__(self, ds, items= None, **params):
+    # Overridden in each subclass: name of the ``iyore.Endpoint`` where the kind of data
+    # the Accessor handles is found
+    endpointName = None
+
+    def parse(entry, state= None):
+        """
+        Parse a single file of a specific type into a pandas structure.
+
+        This method should be overridden in each subclass to actually read the type of file it handles.
+
+        Parameters
+        ----------
+        entry : iyore.Entry
+            An entry for a single file.
+            If possible, parsers should not access any attributes from the Entry, and get its path using
+            ``str(entry)`` rather than ``entry.path``, so that the function can also be used with just
+            a string of the path to a file to read.
+        state : client-determined keyword argument, optional
+            An optional object, created in the initialization function,
+            which is passed into the parser function on every call for a Query.
+            (Often a dict or tuple.) This can be used to pass state between files read.
+            Though the object is created in ``prepareState``, it's safe for ``parserFunc``
+            to mutate.
+        """
+        raise NotImplementedError
+
+    def prepareState(endpoint, endpointParams, **kwargs):
+        """
+        Optionally overridden in subclasses which need to pass state between multiple calls of
+        ``parse()`` for the same Query
+
+        Should return the ``state`` object which will be passed into ``parse`` on every call for a Query.
+        The state object can be any type (though dict usually makes most sense).
+        ``prepareState`` is called once, before each time the Query is used.
+
+        When the Query is used (by .all(), .groupby(), etc), any keyword arguments it's given
+        that match the keyword arguments taken by ``prepareState`` will be given to ``prepareState``.
+        Any remaining keyword arguments that do not share the same names are assumed to be filters for the Endpoint.
+        The Endpoint instance, and a dict of these endpoint parameters, are given to
+        ``prepareState`` as its first two arguments, in case they're useful.
+        """
+        pass
+
+    def __call__(self, ds, items= None, **filters):
+        """
+        Returns a Query to access data from the dataset ``ds`` which matches the given filters
+        """
         try:
             endpoint = getattr(ds, self.endpointName)
         except AttributeError:
@@ -500,19 +491,26 @@ class Accessor(object):
                 # TODO: may need to map a function which converts numerics to strings
                 items = paramColumns.iterrows()
 
-            params["items"] = items
+            filters["items"] = items
 
-        # split initialFunc params from endpoint params
-        if self.initialFunc is not None:
-            initialFuncParams = { kwarg: params.pop(kwarg) for kwarg in self.initialFuncKwargs if kwarg in params }
-            return Query(endpoint, params, self.parser, initialFunc= self.initialFunc, initialFuncParams= initialFuncParams)
-
+        # split prepareState params from endpoint filters
+        if self.prepareState is not None:
+            prepareStateParams = { kwarg: filters.pop(kwarg) for kwarg in self.prepareStateKwargs if kwarg in filters }
+            return Query(endpoint, filters, self.parse, prepareState= self.prepareState, prepareStateParams= prepareStateParams)
         else:
-            return Query(endpoint, params, self.parser)
+            return Query(endpoint, params, self.parse)
 
-    def initialize(self, initialFunc):
-        self.initialFunc = initialFunc
-        argspec = inspect.getargspec(initialFunc)
-        self.initialFuncKwargs = argspec.args[ -len(argspec.defaults): ]
-        if "items" in self.initialFuncKwargs:
-            raise TypeError("The keyword argument 'items' is already used by Accessor, please pick a different name")
+
+    def __init__(self):
+        if self.endpointName is None:
+            raise NotImplementedError('No Endpoint name set for the Accessor "{}"'.format(self.__class__.__name__))
+
+        # if prepareState is not overridden by subclass, eliminate it
+        if self.prepareState.__func__ is Accessor.prepareState:
+            self.prepareState = None
+        else:
+            # otherwise, find out what its keyword arguments are so they can be pulled out when the Accessor is called
+            argspec = inspect.getargspec(self.prepareState)
+            self.prepareStateKwargs = argspec.args[ -len(argspec.defaults): ]
+            if "items" in self.prepareStateKwargs:
+                raise TypeError("The keyword argument 'items' is already used by Accessor, please pick a different name")

@@ -1,7 +1,20 @@
-from .accessor import GroupbyApplier, Query, Accessor, accessor
+from .accessor import GroupbyApplier, Query, Accessor
+from . import parsers
 
-# TODO: register parser functions to export in @accessor decorator
+import inspect
 
-from .parsers import nvspl, srcid
+def populateAccessors():
+    """
+    Find all filetype-specific Accessor subclasses in the parsers file (i.e. NVSPL, SRCID, etc.) and instantiate them.
+    This way, one instance of each Accessor is added to the soundDB namespace under the name of the Endpoint it uses.
+    """
 
-del parsers
+    predicate = lambda obj: inspect.isclass(obj) and issubclass(obj, Accessor) and obj is not Accessor
+    specificAccessorSubclasses = inspect.getmembers(parsers, predicate)
+    instantiated = { cls.endpointName: cls() for name, cls in specificAccessorSubclasses }
+
+    return instantiated
+
+globals().update(populateAccessors())
+
+del inspect, accessor, parsers, populateAccessors
