@@ -8,6 +8,163 @@ from .accessor import accessor
 
 import pandas as pd
 import numpy as np
+import re
+
+
+# Example Accessor docstring:
+"""
+nvspl(ds: iyore.Dataset, items= None, sort= None, timestamps= None, columns= None, **filters)
+
+Builds a Query to access NVSPL data from the dataset ``ds`` that matches the given filters.
+
+NVSPL-specific Parameters
+-------------------------
+
+timestamps : iterable of datetime-like, or pandas.DatetimeIndex
+
+    Specific seconds to read data from
+
+columns : list of str or int
+
+    Columns to read, either by name or number
+
+Resulting DataFrame
+-------------------
+
+<class 'pandas.core.frame.DataFrame'>
+Int64Index: 3600 entries, 0 to 3599
+Data columns (total 44 columns):
+12.5         float64
+15.8         float64
+20           float64
+25           float64
+31.5         float64
+40           float64
+50           float64
+63           float64
+80           float64
+100          float64
+125          float64
+160          float64
+200          float64
+250          float64
+315          float64
+400          float64
+500          float64
+630          float64
+800          float64
+1000         float64
+1250         float64
+1600         float64
+2000         float64
+2500         float64
+3150         float64
+4000         float64
+5000         float64
+6300         float64
+8000         float64
+10000        float64
+12500        float64
+16000        float64
+20000        float64
+dbA          float64
+dbC          float64
+dbF          float64
+Voltage      float64
+WindSpeed    float64
+WindDir      float64
+TempIns      float64
+TempOut      float64
+Humidity     float64
+INVID        float64
+INSID        float64
+dtypes: float64(44)
+memory usage: 1.2 MB
+
+
+Parameters
+----------
+
+ds : iyore.Dataset
+    
+    The Dataset from which to access the NVSPL files
+
+items : iterable of dict, or pandas.DataFrame, default None
+
+    Specific entries to access from the Dataset
+
+sort : str, iterable of str, or function, default None
+
+    How to sort the results. If ``str`` or iterable of ``str``, must be field(s) of the NVSPL Endpoint of the given Dataset.
+    If function, must take an ``iyore.Entry`` and return a value to represent that Entry when sorting.
+
+**filters : str, number, dict of {str: False}, iterable of str, or function
+
+    Restrict results to Entries which match the given values in the specified fields
+
+Returns
+-------
+
+``soundDB.Query`` object, which can be used in these ways:
+
+    - ``.groupby()``: bundle the data into groups by year, site, etc., apply operations to summarize each group,
+                      combine the results computed from all the groups into a DataFrame (like pandas groupby).   
+
+    - ``.all()``: return a DataFrame of all the data contained in the Dataset.
+
+    - ``.one()``: return one Entry object whose ``data`` attribute contains a pandas structure
+
+    - ``.sorted()``: iterate in a particular order through Entry objects whose ``data`` attributes contain pandas structures.
+    
+    - As an iterable, which yields Entry objects whose ``data`` attributes contain pandas structures.
+
+"""
+
+# def initializeFastNVSPL(endpoint, endpointParams, timestamps= None, columns= None):
+
+#     columnNames = ['SiteID', 'date', '12.5', '15.8', '20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250', '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000', '10000', '12500', '16000', '20000', 'dBA', 'dBC', 'dBF', 'Voltage', 'WindSpeed', 'WindDir', 'TempIns', 'TempOut', 'Humidity', 'INVID', 'INSID', 'GChar1', 'GChar2', 'GChar3', 'AdjustmentsApplied', 'CalibrationAdjustment', 'GPSTimeAdjustment', 'GainAdjustment', 'Status']
+#     index_index = 1 # Default position of the index column (STime)
+    
+#     if columns == "spl":
+#         # Convenience option for just getting columns containing actual SPL data
+#         columns = columnNames[:38]
+#     elif columns is not None:
+#         # Ensure we read the STime (date) column, otherwise indexing will be messed up
+#         if all(isinstance(column, basestring) for column in columns):
+#             columnNamesSet = set(columnNames)
+#             if all(column in columnNamesSet for column in columns):
+#                 if "date" not in columns:
+#                     columns = ["date"] + columns
+#                 index_index = 0
+#             else:
+#                 raise TypeError("These column names are not found in an NVSPL DataFrame: {}".format(", ".join(set(columns).difference(columnNamesSet))))
+#         elif all(isinstance(column, int) for column in columns):
+#             if 1 not in columns:
+#                 columns = [1] + columns
+#                 columns.sort()
+#             index_index = columns.index(1)
+#         else:
+#             raise TypeError("columns must be a list of strings or of integers")
+
+# def fastNVSPL(nvsplFileEntry):
+#     timestamps, columns, index_index = params
+
+#     columnNames = ['SiteID', '12.5', '15.8', '20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250', '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000', '10000', '12500', '16000', '20000', 'dbA', 'dbC', 'dbF', 'Voltage', 'WindSpeed', 'WindDir', 'TempIns', 'TempOut', 'Humidity', 'INVID', 'INSID', 'GChar1', 'GChar2', 'GChar3', 'AdjustmentsApplied', 'CalibrationAdjustment', 'GPSTimeAdjustment', 'GainAdjustment', 'Status']
+
+#     df = pd.read_csv(str(nvsplFileEntry),
+#                      engine= 'c',
+#                      # sep= ',',
+#                      parse_dates= True,
+#                      index_col= index_index,
+#                      infer_datetime_format= True,
+#                      usecols= columns,
+#                      header= 0,
+#                      names= columnNames
+#                      )
+
+
+
+
 
 @accessor("nvspl")
 def nvspl(nvsplFileEntry, params= (None, None, 1)):
