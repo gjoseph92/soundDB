@@ -74,10 +74,6 @@ under its ``endpointName``.
 
 class NVSPL(Accessor):
     """
-    nvspl(ds: iyore.Dataset, items= None, sort= None, timestamps= None, columns= None, **filters)
-
-    Builds a Query to access NVSPL data from the dataset ``ds`` that matches the given filters.
-
     NVSPL-specific Parameters
     -------------------------
 
@@ -141,44 +137,6 @@ class NVSPL(Accessor):
     INSID        float64
     dtypes: float64(44)
     memory usage: 1.2 MB
-
-
-    Parameters
-    ----------
-
-    ds : iyore.Dataset
-        
-        The Dataset from which to access the NVSPL files
-
-    items : iterable of dict, or pandas.DataFrame, default None
-
-        Specific entries to access from the Dataset
-
-    sort : str, iterable of str, or function, default None
-
-        How to sort the results. If ``str`` or iterable of ``str``, must be field(s) of the NVSPL Endpoint of the given Dataset.
-        If function, must take an ``iyore.Entry`` and return a value to represent that Entry when sorting.
-
-    **filters : str, number, dict of {str: False}, iterable of str, or function
-
-        Restrict results to Entries which match the given values in the specified fields
-
-    Returns
-    -------
-
-    ``soundDB.Query`` object, which can be used in these ways:
-
-        - ``.groupby()``: bundle the data into groups by year, site, etc., apply operations to summarize each group,
-                          combine the results computed from all the groups into a DataFrame (like pandas groupby).   
-
-        - ``.all()``: return a DataFrame of all the data contained in the Dataset.
-
-        - ``.one()``: return one Entry object whose ``data`` attribute contains a pandas structure
-
-        - ``.sorted()``: iterate in a particular order through Entry objects whose ``data`` attributes contain pandas structures.
-        
-        - As an iterable, which yields Entry objects whose ``data`` attributes contain pandas structures.
-
     """
 
     endpointName = "nvspl"
@@ -249,19 +207,19 @@ class NVSPL(Accessor):
 
 
 class SRCID(Accessor):
+    """
+    Resulting DataFrame
+    -------------------
+
+    The ``nvsplDate``, ``hr``, and ``secs`` columns are combined into a single DatetimeIndex for the DataFrame and dropped.
+    The ``len`` column (length of the noise event) is converted to a pandas Timedelta.
+
+    <TODO>
+    """
+
     endpointName = "srcid"
 
     def parse(entry):
-        """
-        Read a SPLAT SRCID file into a pandas DataFrame.
-
-        The ``nvsplDate``, ``hr``, and ``secs`` columns are combined into a single DatetimeIndex for the DataFrame and dropped.
-        The ``len`` column (length of the noise event) is converted to a pandas Timedelta.
-
-        Returns
-        -------
-        DataFrame
-        """
 
         with open(str(entry)) as f:
             # Determine version; older versions immediately start with header, newer has version comment
@@ -310,3 +268,42 @@ class SRCID(Accessor):
             data.tagDate = pd.to_datetime(data.tagDate, infer_datetime_format= True)
 
         return data
+
+class LoudEvents(Accessor):
+    """
+    Resulting Panel
+    -------------------
+
+    * The items axis (axis 0) is ["above", "all", "percent"]. So you'd use ``events["above"]`` to get a
+      sub-DataFrame of events that exceeded $L_{nat}$, where rows are indexed by date, and columns from 0 to 23 hours.
+    * The major_axis (axis 1) is ``date``: pandas DateTime objects
+    * The minor_axis (axis 2) is ``hour``: 0 to 23
+
+    <TODO>
+    """
+
+
+    endpointName = "loudevents"
+
+
+    def parse(entry):
+
+        data = pd.read_csv(str(entry),
+                            engine= "c",
+                            sep= "\t",
+                            index_col= 0,
+                            parse_dates= True,
+                            infer_datetime_format= True)
+
+        if data.index.name is not None: data.index.name = data.index.name.lower()
+        data.columns = list(range(24)) * 3
+
+        paneldata = pd.Panel({
+                                "above": data.iloc[:, 0:24],
+                                "all": data.iloc[:, 24:48],
+                                "percent": data.iloc[:, 48:72]
+                            })
+
+        paneldata.minor_axis.name = "hour"
+
+        return paneldata

@@ -1,7 +1,7 @@
 # Python 2 and 3 cross-compatibility:
 from __future__ import print_function, division, unicode_literals, absolute_import
 from builtins import (bytes, str, int, dict, object, range, map, filter, zip, round, pow, open)
-from future.utils import (iteritems, itervalues)
+from future.utils import (iteritems, itervalues, with_metaclass)
 from past.builtins import basestring
 
 import itertools
@@ -22,11 +22,11 @@ import re
 
 # NICE EVENTUALLY:
 # [ ] Accessor instances have own docstrings: parser docstring plus columns and dtypes of resulting data
+# [ ] Accessor.__call__ accepts Dataset, Endpoint, or a pathstring (in which case it builds an in-memory Dataset on that directory (of just endpointName: *), or if a single file, just reads it using Accessor.parse)
 # [ ] Helpful reprs
 # [ ] Progressbar
 # [ ] Auto-parallelization? (or kwarg for @accessor at least)
 # [x] Specifying list of sites (as iterable of dicts/tuples, pandas index, etc) -- here and/or iyore
-# [ ] Specifying list of filepaths/directories *without* iyore
 # [ ] Combining datasets/endpoints -- here and/or iyore
 # [-] Smart .all that promotes to next-dimensional structure  ==> may not actually be possible: Panel doesn't make sense for any data, as the minor axes (rows) aren't the same for all deployments, since they're timestamps
 # [-] Should GroupbyApplier self-mutate? ==> keeping same model for now, generator comprehesion given to GroupbyApplier is still single-use, plus Pandas is also single-use
@@ -415,10 +415,115 @@ class Query(object):
         groupedIterator = ( (key, concat_maybe(e.data for e in subiter)) for key, subiter in itertools.groupby(sortedIterator, groupFunc))
         return GroupbyApplier(groupedIterator) # maybe pass in Progressbar
 
-
-class Accessor(object):
+class AccessorDocFiller(type):
     """
-    Base class to create classes for accessing a specific kind of data from an iyore Dataset.
+    Metaclass to insert boilerplate documentation into each Accessor subclass.
+
+    Each Accessor subclass's docstring should only have information specific to that kind of data.
+    These sections should be:
+
+    <Accessor_name>-Specific Parameters (optional)
+    -----------------------------------
+
+    If the Accessor has a prepareState method that takes extra keyword arguments
+    (like NVSPL takes the ``columns`` and ``timestamps`` arguments), document them here.
+    The first line of the docstring---the argument spec for calling the Accessor---will
+    have these extra keyword arguments and their default values nicely inserted automatically. Neat!
+
+    Resulting Series/DataFrame/Panel/Object
+    ---------------------------------------
+
+    Document the structure of the data this Accessor returns. Typically, this can just be the
+    output of ``data.info()`` if ``data`` is a pandas structure.
+
+    """
+
+    def __new__(mcls, clsname, bases, dct):
+
+        # We only want to modify the docstrings for *subclasses* of Accessor, not Accessor itself.
+        # For now, I hardcode the name of the base class whose subclasses should have their documentation patched.
+        # That's pretty nasty, I know.
+        # There is probably a more general way to figure out the hierarchy of the class-to-be,
+        # and whether it's a subclass of Accessor or the Accessor class itself. However, with the class-to-be
+        # not yet instantiated, there's not much that Python's internals can do to help us.
+        # For now, we're leaving it at this
+        if clsname != "Accessor":
+
+            # Format any special keyword arguments the Accessor's prepareState function has
+            prepareStateKwargs = ""
+            if "prepareState" in dct:
+                argspec = inspect.getargspec(dct["prepareState"])
+                if argspec.defaults is not None:
+                    kwargNames = argspec.args[ -len(argspec.defaults): ]
+                    prepareStateKwargs = " "+inspect.formatargspec(kwargNames, None, None, argspec.defaults)[1:-1] + ","
+
+            # Fill in the subclassDocTemplate with information from the subclass
+            fillin = {
+                "endpointName": dct.get("endpointName", clsname),
+                "subclassDocstring": inspect.cleandoc(dct.get("__doc__", "")),
+                "className": clsname,
+                "prepareStateKwargs": prepareStateKwargs
+            }
+
+            newdoc = inspect.cleandoc(mcls.subclassDocTemplate).format(**fillin)
+            dct["__doc__"] = newdoc
+
+        return super(AccessorDocFiller, mcls).__new__(mcls, clsname, bases, dct)
+
+    subclassDocTemplate = """
+        {endpointName}(ds: iyore.Dataset, items=None, sort=None,{prepareStateKwargs} **filters)
+
+        Builds a Query to access {className} data from the dataset ``ds`` that matches the given filters.
+
+        {subclassDocstring}
+
+        Documentation common to all Accessors
+        =====================================
+
+        A quick-reference for how Accessors for all types of files are used. 
+
+        Parameters
+        ----------
+
+        ds : iyore.Dataset
+            
+            The Dataset from which to access the NVSPL files
+
+        items : iterable of dict, or pandas.DataFrame, default None
+
+            Specific entries to access from the Dataset
+
+        sort : str, iterable of str, or function, default None
+
+            How to sort the results. If ``str`` or iterable of ``str``, must be field(s) of the NVSPL Endpoint of the given Dataset.
+            If function, must take an ``iyore.Entry`` and return a value to represent that Entry when sorting.
+
+        **filters : str, number, dict of {{str: False}}, iterable of str, or function
+
+            Restrict results to Entries which match the given values in the specified fields
+
+        Returns
+        -------
+        For more, see the documentation for ``soundDB.Query``.
+
+        ``soundDB.Query`` object, which can be used in these ways:
+
+            - ``.groupby()``: bundle the data into groups by year, site, etc., apply operations to summarize each group,
+                              combine the results computed from all the groups into a DataFrame (like pandas groupby).   
+
+            - ``.all()``: return a DataFrame of all the data contained in the Dataset.
+
+            - ``.one()``: return one Entry object whose ``data`` attribute contains a pandas structure
+
+            - ``.sorted()``: iterate in a particular order through Entry objects whose ``data`` attributes contain pandas structures.
+            
+            - As an iterable, which yields Entry objects whose ``data`` attributes contain pandas structures.
+    """
+
+
+class Accessor(with_metaclass(AccessorDocFiller, object)):
+    """
+    Abstract base class to create classes for accessing a specific kind of data from an iyore Dataset.
 
     By subclassing Accessor and implementing a ``parse`` function, which holds the logic for
     reading a single file of a specific type into a pandas structure, Accessor provides the
