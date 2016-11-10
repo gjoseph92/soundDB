@@ -487,23 +487,18 @@ class Accessor(object):
             filters["items"] = items
 
         # split prepareState params from endpoint filters
-        if self.prepareState is not None:
-            prepareStateParams = { kwarg: filters.pop(kwarg) for kwarg in self.prepareStateKwargs if kwarg in filters }
-            return Query(endpoint, filters, self.parse, prepareState= self.prepareState, prepareStateParams= prepareStateParams)
-        else:
-            return Query(endpoint, params, self.parse)
-
+        prepareStateParams = { kwarg: filters.pop(kwarg) for kwarg in self.prepareStateKwargs if kwarg in filters }
+        return Query(endpoint, filters, self.parse, prepareState= self.prepareState, prepareStateParams= prepareStateParams)
 
     def __init__(self):
         if self.endpointName is None:
             raise NotImplementedError('No Endpoint name set for the Accessor "{}"'.format(self.__class__.__name__))
 
-        # if prepareState is not overridden by subclass, eliminate it
-        if self.prepareState.__func__ is Accessor.prepareState:
-            self.prepareState = None
-        else:
-            # otherwise, find out what its keyword arguments are so they can be pulled out when the Accessor is called
-            argspec = inspect.getargspec(self.prepareState)
+        # find out what prepareState's keyword arguments are so they can be pulled out when the Accessor is called
+        argspec = inspect.getargspec(self.prepareState)
+        if argspec.defaults is not None:
             self.prepareStateKwargs = argspec.args[ -len(argspec.defaults): ]
             if "items" in self.prepareStateKwargs:
                 raise TypeError("The keyword argument 'items' is already used by Accessor, please pick a different name")
+        else:
+            self.prepareStateKwargs = {}
