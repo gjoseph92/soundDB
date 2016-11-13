@@ -483,8 +483,7 @@ class DailyPA(Accessor):
         # Ensure MultiIndex sortedness
         data.sortlevel(inplace= True)
 
-        # TODO: Use convert_numerics instead of deprecated convert_objects
-        return data.convert_objects(convert_dates= False, convert_numeric= True, convert_timedeltas= False, copy= False)
+        return data.apply(pd.to_numeric, raw= True, errors= "coerce")
 
 class Metrics(Accessor):
     """
@@ -786,14 +785,7 @@ class Metrics(Accessor):
                 df.set_index(0, inplace= True)
                 df.index.name= None
                 df.columns = columns[1:]
-                # TODO: use to_numeric instead of deprecated convert_objects
-                df = df.convert_objects(convert_dates= False, convert_numeric= True, convert_timedeltas= False, copy= False)
-                for column, dtype in df.dtypes.iteritems():
-                    if dtype == np.object:
-                        # Force any non-numeric column to be all NaN. Currently (pandas 0.16.1), convert_objects
-                        # will only leave columns as objects if they contain 0 convertible numeric values, so we
-                        # *should* be safe assuming no actual data is dropped.
-                        df[column] = np.nan
+                df = df.apply(pd.to_numeric, raw= True, errors= "coerce")
                 
                 # Guess the type of the index (if it's noise level, or hour)
                 for axname in ("index", "columns"):
