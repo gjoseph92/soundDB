@@ -210,12 +210,12 @@ class Query(object):
         """
         # TODO: any use case (/ is it possible) to define an explicit ordering rather than a key function?
         # TODO: allow client-facing keys, i.e. *args of strs?
-        params = self.prepareState(self.endpoint, self.endpointFilters, **self.prepareStateParams) if self.prepareState is not None else None
+        state = self.prepareState(self.endpoint, self.endpointFilters, **self.prepareStateParams) if self.prepareState is not None else None
         def iterate():
             for entry in self.endpoint(sort= key, **self.endpointFilters):
                 try:
                     # time and parallelize if appropriate
-                    entry.data = self.parserFunc(entry, params= params) if params is not None else self.parserFunc(entry)
+                    entry.data = self.parserFunc(entry, state= state) if state is not None else self.parserFunc(entry)
                     yield entry
                 except GeneratorExit:
                     raise GeneratorExit
@@ -534,7 +534,7 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
     # the Accessor handles is found
     endpointName = None
 
-    def parse(entry, state= None):
+    def parse(self, entry, state= None):
         """
         Parse a single file of a specific type into a pandas structure.
 
@@ -556,7 +556,7 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         """
         raise NotImplementedError
 
-    def prepareState(endpoint, endpointParams, **kwargs):
+    def prepareState(self, endpoint, endpointParams, **kwargs):
         """
         Optionally overridden in subclasses which need to pass state between multiple calls of
         ``parse()`` for the same Query
