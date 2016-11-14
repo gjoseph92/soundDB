@@ -5,11 +5,13 @@ from future.utils import (iteritems, itervalues, with_metaclass)
 from past.builtins import basestring
 
 import itertools
+import functools
 import operator
 import traceback
 import collections
 import inspect
 
+import numpy as np
 import pandas as pd
 import re
 
@@ -42,17 +44,79 @@ class GroupbyApplier:
         self._iter = iterator
 
     def compute(self):
-        # TODO: should compute take an optional final function which is given the whole data to process?
-        #       i.e. could be a function for computing bioacoustic metric from a whole DataFrame of NVSPL, etc
         # TODO: does this work on Metrics?
         results = {key: data for key, data in iter(self)}
-        try:
-            # TODO: this is horribly stupid and should actually be checked
-            # TODO: if all data is DataFrame -> return Panel (well, only if columns & index are same for all),
-            # if all Series -> return DataFrame, if all scaler, return Series
-            return pd.DataFrame.from_dict(results, orient= "index")
-        except ValueError:
-            return pd.Series(results)
+
+        if len(results) == 0:
+            return results
+
+        ########################################################################################
+        # Combine results depending on whether data are scalars, Series, DataFrames, or Panels #
+        ########################################################################################
+        overlapThreshold = 0.75     # fraction of columns/rows all data must have in common to be considered worth combining
+        def percentIndexOverlap(attr, results):
+            """
+            Returns what fraction of index values are common to all NDFrames in results,
+            compared to the NDFrame with the most rows/columns.
+
+            Pass "index" or "columns" as ``attr`` to specify rows or columns.
+            """
+            getter = operator.attrgetter(attr)
+
+            longest = max(len(getter(df)) for df in itervalues(results))
+            columnsIter = (getter(df) for df in itervalues(results))
+            mutualColumns = functools.reduce(lambda colA, colB: colA.intersection(colB), columnsIter)
+            return len(mutualColumns)/longest
+
+        # Sanity check: are all data at least of the same type?
+        exampleResult = next(iter(itervalues(results)))
+        print(type(exampleResult))
+        print(exampleResult)
+        if all(type(data) == type(exampleResult) for data in itervalues(results)):
+            print("consistent types")
+
+            if np.isscalar(exampleResult) or isinstance(exampleResult, (pd.Timedelta, pd.Timestamp, pd.Period)):
+                # combine scalars to Series
+                print("ex is scalar")
+                return pd.Series(results)
+            elif isinstance(exampleResult, (pd.Series, list)):
+                print("ex is Series")
+                # combine Series (or lists) to DataFrame
+                # if indicies overlap, return a DataFrame, otherwise a MultiIndexed Series
+                try:
+                    if percentIndexOverlap("index", results) >= overlapThreshold:
+                        return pd.DataFrame.from_dict(results, orient= "columns")
+                    else:
+                        return pd.concat(results)
+                except AttributeError:
+                    return results
+
+
+            elif isinstance(exampleResult, pd.DataFrame):
+                print("ex is DataFrame")
+                # if all DataFrames have the same have the same indicies and columns --> Panel
+                # if just have same columns and different indicies (of same dtype, i.e. DatetimeIndex) --> MultiIndexed DataFrame (like .all())
+                
+                # if at least 75% of columns overlap in all results, consider them worth combining
+                # (75% is a pretty arbitrary number...)
+                if percentIndexOverlap("columns", results) >= overlapThreshold:
+
+                    # if at least 75% of rows overlap, combine to a Panel
+                    if percentIndexOverlap("index", results) >= overlapThreshold:
+                        return pd.Panel.from_dict(results, orient= 'items')
+
+                    # otherwise, ensure the indicies at least are all the same dtype, and make a MultiIndexed DataFrame (like .all() does)
+                    elif all(df.index.dtype == exampleResult.index.dtype for df in itervalues(results)):
+                        return pd.concat(results)
+
+            elif isinstance(exampleResult, pd.Panel) and not isinstance(exampleResult, pd.Panel4D):
+                print("ex is Panel")
+                # if at least 75% of all axes overlap, combine to a Panel4D
+                if all(percentIndexOverlap(attr, results) >= overlapThreshold for attr in ["items", "major_axis", "minor_axis"]):
+                    return pd.Panel4D.from_dict(results)
+
+        # If types are inconsistent, or not pandas, or a Panel4D, just give back results as a dict---we can't help you any more here
+        return results
 
     def __iter__(self):
         for key, data in iter(self._iter):
@@ -61,7 +125,7 @@ class GroupbyApplier:
                 if isinstance(step, basestring):
                     result = getattr(result, step)
                 elif isinstance(step, tuple):
-                    result = result(*step)
+                    result = result(*step[0], **step[1])
                 elif isinstance(step, list):
                     result = result.__getitem__(*step)
             # print(key, result)
@@ -75,8 +139,8 @@ class GroupbyApplier:
         self._chain.append(list(index))
         return self
 
-    def __call__(self, *args):
-        self._chain.append(tuple(args))
+    def __call__(self, *args, **kwargs):
+        self._chain.append((args, kwargs))
         return self
 
     def __repr__(self):
