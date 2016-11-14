@@ -17,7 +17,7 @@ import re
 
 # MUST DO:
 # [ ] Docs, duh
-# [ ] 2-3 cross-compatibility
+# [x] 2-3 cross-compatibility
 # [x] (Where) should iterators be consumed
 # [x] Where to sort, if to sort
 # [x] Better default ID for .all
