@@ -23,8 +23,9 @@ import re
 # [x] Better default ID for .all
 
 # NICE EVENTUALLY:
-# [ ] Accessor instances have own docstrings: parser docstring plus columns and dtypes of resulting data
+# [x] Accessor instances have own docstrings: parser docstring plus columns and dtypes of resulting data
 # [ ] Accessor.__call__ accepts Dataset, Endpoint, or a pathstring (in which case it builds an in-memory Dataset on that directory (of just endpointName: *), or if a single file, just reads it using Accessor.parse)
+# [ ] Should we use GroupbyApplier.compute()-like concat/promote logic for .all() and for sub-concatenation in .groupby()?
 # [ ] Helpful reprs
 # [ ] Progressbar
 # [ ] Auto-parallelization? (or kwarg for @accessor at least)
@@ -44,7 +45,21 @@ class GroupbyApplier:
         self._iter = iterator
 
     def compute(self):
-        # TODO: does this work on Metrics?
+        """
+        Perform the groupby operation, apply the operations chain to each parcel of data,
+        and intelligently combine the results into a Series, DataFrame, Panel, or dict.
+
+        The resulting data structure depends on what the groups look like after applying the
+        operations chain to them. Generally, compute tries to put the results into the
+        next-higher-dimensional structure: scalars are combined into a Series, Series are
+        combined into a DataFrame, DataFrames are combined into a Panel, and Panels are combined
+        into a Panel4D.
+
+        However, if the groups don't share the same axis values (rows/columns), then combining them
+        would result in a structure filled mostly with NaNs. Therefore, if the groups don't all share
+        at least 75% of the same values in each axis (most commonly happens with a DatetimeIndex),
+        they will be concatenated instead of combined into a higher-dimensional structure.
+        """
         results = {key: data for key, data in iter(self)}
 
         if len(results) == 0:
@@ -70,17 +85,12 @@ class GroupbyApplier:
 
         # Sanity check: are all data at least of the same type?
         exampleResult = next(iter(itervalues(results)))
-        print(type(exampleResult))
-        print(exampleResult)
         if all(type(data) == type(exampleResult) for data in itervalues(results)):
-            print("consistent types")
 
             if np.isscalar(exampleResult) or isinstance(exampleResult, (pd.Timedelta, pd.Timestamp, pd.Period)):
                 # combine scalars to Series
-                print("ex is scalar")
                 return pd.Series(results)
             elif isinstance(exampleResult, (pd.Series, list)):
-                print("ex is Series")
                 # combine Series (or lists) to DataFrame
                 # if indicies overlap, return a DataFrame, otherwise a MultiIndexed Series
                 try:
@@ -93,7 +103,6 @@ class GroupbyApplier:
 
 
             elif isinstance(exampleResult, pd.DataFrame):
-                print("ex is DataFrame")
                 # if all DataFrames have the same have the same indicies and columns --> Panel
                 # if just have same columns and different indicies (of same dtype, i.e. DatetimeIndex) --> MultiIndexed DataFrame (like .all())
                 
@@ -110,7 +119,6 @@ class GroupbyApplier:
                         return pd.concat(results)
 
             elif isinstance(exampleResult, pd.Panel) and not isinstance(exampleResult, pd.Panel4D):
-                print("ex is Panel")
                 # if at least 75% of all axes overlap, combine to a Panel4D
                 if all(percentIndexOverlap(attr, results) >= overlapThreshold for attr in ["items", "major_axis", "minor_axis"]):
                     return pd.Panel4D.from_dict(results)
@@ -128,7 +136,6 @@ class GroupbyApplier:
                     result = result(*step[0], **step[1])
                 elif isinstance(step, list):
                     result = result.__getitem__(*step)
-            # print(key, result)
             yield key, result
 
     def __getattr__(self, attr):
@@ -317,6 +324,9 @@ class Query(object):
         deployment ID to a singleton or list of data objects for that ID is returned.
         """
 
+        # TODO: consider using something like GroupbyApplier.compute() to choose appropriate-dimensionality data structures
+        # and handle concat versus promote?
+
         if ID is None:
             def defaultID(entry):
                 """
@@ -471,8 +481,11 @@ class Query(object):
             if len(datas) == 1:
                 return datas[0]
             else:
-                # TODO: try/except? (for metrics)
-                return pd.concat(datas)
+                # TODO: use GroupbyApplier.compute()-like logic for concat/promote?
+                try:
+                    return pd.concat(datas)
+                except TypeError:
+                    return datas
 
         sortedIterator = self.sorted(groupFunc)
         # ...but somehow have to figure out total number of files...
