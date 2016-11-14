@@ -3,5 +3,6 @@ __pycache__
 .DS_Store
 .ipynb_checkpoints/
 *.ipynb
-build
 *.egg-info
+build
+dist
