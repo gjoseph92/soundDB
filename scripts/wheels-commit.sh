@@ -45,11 +45,19 @@ finish_html() {
 	echo '</body></html>' >> $1
 }
 
+echo "Building wheels in master..."
+echo "****************************"
+echo
+
 # Build the wheels in master
 # dist/ should be untracked in master and gh-pages, so it'll be unmodified by git when swiching branches
 git checkout master
 python setup.py bdist_wheel --universal
 git checkout gh-pages
+
+echo "Rebuilding package repository..."
+echo "********************************"
+echo
 
 rm -rf $PACKAGEDIR || { echo "Couldn't remove $PACKAGEDIR. Make sure it's not open anywhere else."; exit 1; }
 mkdir $PACKAGEDIR
@@ -81,6 +89,13 @@ finish_html "index.html"
 echo "Built $PACKAGEDIR/index.html"
 cd ..
 
+echo "Committing new wheels and cleaning up..."
+echo "****************************************"
+echo
+
 git add --all $PACKAGEDIR
-# git commit -m "Updated wheels from `git log master -1 --pretty=short --abbrev-commit`"
-# git clean -d -f
+git commit -m "Updated wheels from `git log master -1 --pretty=short --abbrev-commit`"
+git clean -d -f
+rm -rf $DISTDIR
+echo "Removed $DISTDIR"
+
