@@ -21,3 +21,24 @@ soundDB solves problem 1 using the library [`iyore`](https://github.com/national
 
 Your datasets may be organized in many different ways. But if you can tell the computer *how* each one is organized, then pulling out just the files you want is a snap.
 
+*The rest of this readme is still in progress*
+
+-------------------
+
+## Installation
+
+### Windows
+
+If you are using conda on Windows, you need to ensure the difficult compiled libraries are installed the easy way, via conda:
+
+1. Install numpy and pandas: `conda install numpy pandas`
+2. Let pip install soundDB and iyore: `pip install --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB`
+3. When you need to upgrade soundDB, ensure that pip doesn't try to upgrade numpy and pandas as well: `pip install --upgrade --no-deps --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ iyore soundDB`
+
+### Everyone else
+
+Just use this command to both install and upgrade:
+
+```
+pip install --upgrade --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
+```
