@@ -9,7 +9,7 @@
 ##
 ## Prereqs:
 ## Create the clean gh-pages branch according to the directions in docs-commit.sh
-## dist/ should *not* be tracked in master
+## dist/ should *not* be tracked in master or in gh-pages
 ## 
 ## Every time you have a new release:
 ## Update setup.py with version info and commit in master
@@ -21,11 +21,12 @@ set -e
 
 PARENT=$(basename $(dirname $0))
 if [[ $PARENT == "." ]]; then
-	echo "Please run from the root of the repository, i.e. scripts/$(basename $0)"
+	echo "Please run from the root of the repository, i.e. using scripts/$(basename $0)"
 	exit 1
 fi
 
 DISTDIR="dist"
+PACKAGEDIR="packages"
 
 # args: package name
 normalize() {
@@ -44,23 +45,21 @@ finish_html() {
 	echo '</body></html>' >> $1
 }
 
+# Build the wheels in master
+# dist/ should be untracked in master and gh-pages, so it'll be unmodified by git when swiching branches
 git checkout master
 python setup.py bdist_wheel --universal
-git add $DISTDIR
-git stash
 git checkout gh-pages
-git stash pop
 
+rm -rf $PACKAGEDIR || { echo "Couldn't remove $PACKAGEDIR. Make sure it's not open anywhere else."; exit 1; }
+mkdir $PACKAGEDIR
 
-rm -rf $DISTDIR || { echo "Couldn't remove $DISTDIR. Make sure it's not open anywhere else."; exit 1; }
-git checkout --theirs master -- $DISTDIR  || { echo "Couldn't checkout $DISTDIR. Make sure it's not open anywhere else."; exit 1; }
-
-cd $DISTDIR
+cd $PACKAGEDIR
 start_html index.html
 
 # make a subdirectory for each package
-for wheel in *.whl; do
-	package_name=$(normalize `echo $wheel | cut -d - -f 1`)
+for wheel in ../$DISTDIR/*.whl; do
+  package_name=$(normalize $(basename $wheel | cut -d - -f 1))
 	if [ ! -e $package_name ]; then
 		mkdir $package_name
 		append_link $package_name index.html
@@ -68,19 +67,20 @@ for wheel in *.whl; do
 	fi
 	mv $wheel $package_name
 	append_link $wheel "$package_name/index.html"
-	echo "Put $wheel in $package_name"
+	echo "Put $wheel in $PACKAGEDIR/$package_name"
 done
 
 for dir in *; do
 	if [ -d $dir ]; then
 		finish_html "$dir/index.html"
-		echo "Built $DISTDIR/$dir/index.html"
+		echo "Built $PACKAGEDIR/$dir/index.html"
 	fi
 done
 
-finish_html index.html
-echo "Built $DISTDIR/index.html"
+finish_html "index.html"
+echo "Built $PACKAGEDIR/index.html"
 cd ..
 
-git add --all $DISTDIR
-git commit -m "Updated wheels from `git log master -1 --pretty=short --abbrev-commit`"
+git add --all $PACKAGEDIR
+# git commit -m "Updated wheels from `git log master -1 --pretty=short --abbrev-commit`"
+# git clean -d -f
