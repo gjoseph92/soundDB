@@ -66,8 +66,8 @@ for wheel in ../$DISTDIR/*.whl; do
 		start_html "$package_name/index.html"
 	fi
 	mv $wheel $package_name
-	append_link $wheel "$package_name/index.html"
-	echo "Put $wheel in $PACKAGEDIR/$package_name"
+  append_link $(basename $wheel) "$package_name/index.html"
+	echo "Put $DISTDIR/$(basename $wheel) in $PACKAGEDIR/$package_name"
 done
 
 for dir in *; do
