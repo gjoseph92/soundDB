@@ -44,10 +44,11 @@ class GroupbyApplier:
         self._chain = []
         self._iter = iterator
 
-    def compute(self):
+    def compute(self, finalize= None, *args, **kwargs):
         """
         Perform the groupby operation, apply the operations chain to each parcel of data,
-        and intelligently combine the results into a Series, DataFrame, Panel, or dict.
+        optionally pass each parcel through a final processing function, and intelligently
+        combine the results into a Series, DataFrame, Panel, or dict.
 
         The resulting data structure depends on what the groups look like after applying the
         operations chain to them. Generally, compute tries to put the results into the
@@ -59,8 +60,22 @@ class GroupbyApplier:
         would result in a structure filled mostly with NaNs. Therefore, if the groups don't all share
         at least 75% of the same values in each axis (most commonly happens with a DatetimeIndex),
         they will be concatenated instead of combined into a higher-dimensional structure.
+
+        Keyword Args
+        ------------
+
+        finalize : {function, None}, default None
+
+            Function to call on each group's data after it has been processed by the operations chain.
+            The results of this function will then be combined into a Series, DataFrame, Panel, or dict.
+            The data will be the first parameter given to the function, and any additional arguments
+            given to ``compute`` will be passed on to ``finalize``.
         """
-        results = {key: data for key, data in iter(self)}
+
+        if finalize is None:
+            results = {key: data for key, data in iter(self)}
+        else:
+            results = {key: finalize(data, *args, **kwargs) for key, data in iter(self)}
 
         if len(results) == 0:
             return results
@@ -151,6 +166,7 @@ class GroupbyApplier:
         return self
 
     def __repr__(self):
+        # TODO: instead note that you didn't call .compute()?
         return repr(self._chain)
 
 
@@ -454,6 +470,12 @@ class Query(object):
         ``q.groupby("unit", "site").groupby("srcID").MaxSPL.median().compute()`` will require much less memory than
         ``q.all().groupby("srcID", level= "ID").MaxSPL.median()``.
         """
+
+        # TODO: should accept no groups, just go file-by-file?
+        # Probably not: would require a default ID function in that case
+        # More likely would be a moderate re-architect to merge Query and GroupbyApplier,
+        # so everything can be operations-chained, maybe rename compute to combine, drop .all
+        # (just accomplished with combine at the end of a chain)
 
         # endpoint field name(s) str, or function
         if len(groups) == 0:
