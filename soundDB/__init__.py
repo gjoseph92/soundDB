@@ -1,4 +1,4 @@
-from .accessor import GroupbyApplier, Query, Accessor
+from .accessor import Accessor
 from . import parsers
 
 import inspect
@@ -11,9 +11,9 @@ def populateAccessors():
 
     predicate = lambda obj: inspect.isclass(obj) and issubclass(obj, Accessor) and obj is not Accessor
     specificAccessorSubclasses = inspect.getmembers(parsers, predicate)
-    instantiated = { cls.endpointName: cls() for name, cls in specificAccessorSubclasses }
+    accessors = { cls.endpointName: cls for name, cls in specificAccessorSubclasses }
 
-    return instantiated
+    return accessors
 
 globals().update(populateAccessors())
 
