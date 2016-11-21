@@ -251,6 +251,9 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         for ID_name, datas in iteritems(results):
             # TODO: this may need logic for concatenating non-pandas structures (i.e. list of scalars)
             # TODO: any case where sub-results should be combined and promoted instead of concatenated?
+
+            # inded there is! i.e. soundDB.nvspl(ds).dbA.median().combine()
+            # HOWEVER, how should we handle this? If we combine to a Series, what are the indicies? Just leave as a list?
             try:
                 flat = pd.concat(datas, copy= False) if len(datas) > 1 else datas[0]
             except TypeError:
