@@ -267,6 +267,10 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         if len(results) == 0:
             return results
 
+        if len(results) == 1:
+            key, result = results.popitem()
+            return result
+
         ########################################################################################
         # Combine results depending on whether data are scalars, Series, DataFrames, or Panels #
         ########################################################################################
