@@ -177,7 +177,6 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         return None
 
     def __init__(self, ds, n= None, items= None, sort= None, **filters):
-        # TODO: n=None
 
         # TODO: all this could be in a metaclass
         ################################
