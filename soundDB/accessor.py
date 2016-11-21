@@ -175,7 +175,7 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         """
         return None
 
-    def __init__(self, ds, items= None, sort= None, **filters):
+    def __init__(self, ds, n= None, items= None, sort= None, **filters):
         # TODO: n=None
 
         # TODO: all this could be in a metaclass
@@ -215,6 +215,10 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         self._filters = filters
         self._sort = sort
         self._chain = []
+
+        if n is not None:
+            self._chain.append(lambda iterable: itertools.islice(iterable, n))
+
 
     @classmethod
     def ID(cls, key):
