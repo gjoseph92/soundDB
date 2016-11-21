@@ -592,7 +592,7 @@ class Metrics(Accessor):
         except KeyError:
             raise TypeError("No metrics reader for version {}".format(version))
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.metricsVersions = {
             "1.35": {
                 "hourlyMedian"              : {'dBA': "Median Hourly Metrics (dBA)", 'dBT': "Median Hourly Metrics (dBT)"},
@@ -609,7 +609,7 @@ class Metrics(Accessor):
         }
 
         self.metricsReaders = { version: self.MetricsReader(version, metricNames) for version, metricNames in iteritems(self.metricsVersions) }
-        super(Metrics, self).__init__()
+        super(Metrics, self).__init__(*args, **kwargs)
 
     class MetricsReader(object):
         """
