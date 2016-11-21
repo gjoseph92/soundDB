@@ -7,6 +7,7 @@ from past.builtins import basestring
 import itertools
 import functools
 import operator
+import collections
 import traceback
 import inspect
 import warnings
