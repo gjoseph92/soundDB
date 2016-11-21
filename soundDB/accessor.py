@@ -134,7 +134,7 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
 
     # Overridden in each subclass: name of the ``iyore.Endpoint`` where the kind of data
     # the Accessor handles is found
-    endpointName = None
+    # endpointName = None
 
     def parse(self, entry, state= None):
         """
