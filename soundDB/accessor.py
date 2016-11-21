@@ -9,6 +9,7 @@ import functools
 import operator
 import traceback
 import inspect
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -230,17 +231,33 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
             return key
 
     def combine(self, func= lambda x: x, into= None, ID= None, *args, **kwargs):
+        # TODO: deprecate processing function in favor of .pipe on pandas objects?
+
         if ID is None:
             ID = self.ID
 
-        # TODO: multiple data from same ID gets lost
-        # Need to store multiples in a list, but what to do with them?
-        # pd.concat isn't good enough to handle scalars
-        # wrap up all this into a combine() function that handles promotion nicely,
-        # and use that to combine multiples?
-        # but is there any case where we'd want to promote the sub-results instead of
-        # concatting them?
-        results = { ID(key): func(data, *args, **kwargs) for key, data in iter(self)}
+        results = collections.defaultdict(list)
+        # build map of {ID: [data, data, ...]} (same ID may have multiple data, i.e. NVSPL or LA)
+        for key, data in iter(self):
+            results[ID(key)].append(data)
+
+        # flatten data for each ID by concatenating, or unpacking list if just one dataframe,
+        # then apply processing function to (maybe-)concatenated data
+        for ID_name, datas in iteritems(results):
+            # TODO: this may need logic for concatenating non-pandas structures (i.e. list of scalars)
+            # TODO: any case where sub-results should be combined and promoted instead of concatenated?
+            try:
+                flat = pd.concat(datas, copy= False) if len(datas) > 1 else datas[0]
+            except TypeError:
+                warnings.warn("Tried to concatenate non-pandas data. Please raise an issue if you find a use-case which triggers this.")
+                flat = datas
+            try:
+                # apply processing function
+                results[ID_name] = func(flat, *args, **kwargs)
+            except:
+                print('Error in final processing function while processing data for "{}":'.format(ID_name))
+                print( traceback.format_exc() )
+
 
         if len(results) == 0:
             return results
