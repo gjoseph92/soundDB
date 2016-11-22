@@ -73,9 +73,9 @@ class AccessorDocFiller(type):
         return super(AccessorDocFiller, mcls).__new__(mcls, clsname, bases, dct)
 
     subclassDocTemplate = """
-        {endpointName}(ds: iyore.Dataset, items=None, sort=None,{prepareStateKwargs} **filters)
+        {endpointName}(ds: iyore.Dataset, n=None, items=None, sort=None,{prepareStateKwargs} **filters)
 
-        Builds a Query to access {className} data from the dataset ``ds`` that matches the given filters.
+        Access {className} data from the dataset ``ds`` that matches the given filters, and apply operations to it.
 
         {subclassDocstring}
 
@@ -90,6 +90,10 @@ class AccessorDocFiller(type):
         ds : iyore.Dataset
             
             The Dataset from which to access the NVSPL files
+
+        n : int, default None
+
+            Maximum number of Entries to read
 
         items : iterable of dict, or pandas.DataFrame, default None
 
