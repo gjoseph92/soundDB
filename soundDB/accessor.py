@@ -227,6 +227,16 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
             if "unit" in key.fields: id_elems.append(key.unit)
             if "site" in key.fields: id_elems.append(key.site)
             if "year" in key.fields: id_elems.append(key.year)
+            if "month" in key.fields:
+                if len(id_elems) > 0: id_elems.append(' ')
+                id_elems.append(key.month)
+                month = True
+            if "day" in key.fields:
+                if month: id_elems.append('-')
+                id_elems.append(key.day)
+            if "hour" in key.fields:
+                if len(id_elems) > 0: id_elems.append(' ')
+                id_elems.append(key.hour+':')
             if len(id_elems) > 0:
                 return "".join(id_elems)
             else:
@@ -248,14 +258,18 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
         # flatten data for each ID by concatenating, or unpacking list if just one dataframe,
         # then apply processing function to (maybe-)concatenated data
         for ID_name, datas in iteritems(results):
-            # TODO: this may need logic for concatenating non-pandas structures (i.e. list of scalars)
-            # TODO: any case where sub-results should be combined and promoted instead of concatenated?
-
-            # inded there is! i.e. soundDB.nvspl(ds).dbA.median().combine()
-            # HOWEVER, how should we handle this? If we combine to a Series, what are the indicies? Just leave as a list?
             try:
                 flat = pd.concat(datas, copy= False) if len(datas) > 1 else datas[0]
             except TypeError:
+                # Issues arise when more than one file maps to the same ID (i.e. NVSPL and LA when *not* using .group),
+                # AND the ops chain results in a scalar (or non-pandas type) for each file.
+
+                # pd.concat obviously doesn't work on scalars. But just turning the list of datas
+                # into a Series isn't that easy: what would you use for the index?
+                # Currently, the solution is a more comprehensive ID function,
+                # so that any data will almost certainly get a different ID for each file.
+                # Eventually, a better solution than just using the list might (or might not) be good,
+                # but it's unclear what that would be.
                 warnings.warn("Tried to concatenate non-pandas data. Please raise an issue if you find a use-case which triggers this.")
                 flat = datas
             try:
