@@ -34,7 +34,7 @@ Endpoints:
 # TODO: run these on acutal data
 
     # compute median event length by year, for years after 2008
->>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).groupby("year").len.median().compute()
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
 2009    00:03:15
 2010    00:03:20
 2011    00:05:04
@@ -46,7 +46,7 @@ Endpoints:
 dtype: timedelta64[ns]
 
     # compute median number of events above L_nat per hour for each year
->>> soundDB.loudevents(ds).groupby("year")["above"].median(axis=0).compute()
+>>> soundDB.loudevents(ds).group("year")["above"].median(axis=0).combine()
       2005  2006  2007  2008  2009  2010  2011  2012  2013  2014  2015  2016
 hour                                                                        
 0        1     3     0     3     4     4     3     2     4     0     5     5
@@ -76,7 +76,7 @@ hour
 
     # read all listening center files for the sites THRI, UPST, and MURI
     # into a single pandas DataFrame
->>> df = soundDB.audibility(ds, site=["THRI", "UPST", "MURI"]).all()
+>>> df = soundDB.audibility(ds, site=["THRI", "UPST", "MURI"]).combine()
 
 ```
 
@@ -102,7 +102,7 @@ So iyore finds specific data files within a folder structure, then soundDB solve
 Though just a single line, this code (which returns a pandas Series of the median noise event length for each year after 2008 in a dataset) ends up touching every important component of soundDB. It's also a good example of what a typical use of soundDB looks like.
 
 ```python
->>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).groupby("year").len.median().compute()
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
 ```
 
 Let's look at each part in detail, starting from the ground up:
@@ -110,16 +110,16 @@ Let's look at each part in detail, starting from the ground up:
 ### 1. iyore Datasets
 
 ```python
->>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).groupby("year").len.median().compute()
-#           ----- --  -----------------------------  --------------------------------------
-#      _______/    |                 |                                |
-#      |    #################        |                                |
-#      |    # iyore dataset #        |                                |
-#      |    #################        |                                |
-#      |                         filter(s)                            |
-#      |                                                              |
-#   Accessor method for data type                                     |
-#                                               Retrieving data from Query (using .groupby in this case)
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
+#           ----- --  -----------------------------  -------------------------- --------
+#      _______/    |                 |                           |                 |
+#      |    #################        |                           |                 |
+#      |    # iyore dataset #        |                           |                 |
+#      |    #################        |                           |                 |
+#      |                         filter(s)                       |                 |
+#      |                                                         |                 |
+#   Accessor method for data type                                |                 |
+#                                                        operations chain    combine data
 ```
 
 Your data might consist of many, many files, stored in many folders, all stored in one directory (or disk). That is your dataset. To make it an iyore Dataset (with a capital D), you need a **structure file** describing how the data is organized, and how to interpret the names of the files and folders.
@@ -165,15 +165,15 @@ Again, to learn about iyore Datasets and what they do, consult the [iyore README
 ### 2. Filtering
 
 ```python
->>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).groupby("year").len.median().compute()
-#           ----- --  -----------------------------  --------------------------------------
-#      _______/    |                 |                                |
-#      |      iyore dataset          |                                |
-#      |                       #############                          |
-#      |                       # filter(s) #                          |
-#      |                       #############                          |
-#   Accessor method for data type                                     |
-#                                               Retrieving data from Query (using .groupby in this case)
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
+#           ----- --  ------------------------------ -------------------------- ---------
+#      _______/    |                 |                           |                 |
+#      |      iyore dataset          |                           |                 |
+#      |                       #############                     |                 |
+#      |                       # filter(s) #                     |                 |
+#      |                       #############                     |                 |
+#   Accessor method for data type                                |                 |
+#                                                       operations chain     combine data
 ```
 
 The main thing iyore Datasets do is allow you to filter your data to find files that match certain criteria, which is explained in the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#filtering). (Hopefully it's clear by now that understanding iyore is a prerequisite to using soundDB.)
@@ -198,7 +198,21 @@ If you look back one section, notice that `unit`, `site`, `month`, and `year` ar
 
 ### 3. Different Accessors, same interface
 
-### 4. Using Queries
+```python
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
+#           ----- --  ------------------------------ -------------------------- ---------
+#      _______/    |                 |                           |                 |
+#      |      iyore dataset          |                           |                 |
+#      |                             |                           |                 |
+#      |                         filter(s)                       |                 |
+# #################################                              |                 |
+# # Accessor method for data type #                              |                 |
+# #################################                     operations chain     combine data
+```
+
+### 4. Operating on data
+
+### 5. 
 
 
 
