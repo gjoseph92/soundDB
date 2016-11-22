@@ -194,7 +194,7 @@ For example, to find NVSPL files from the park unit Denali, all site codes excep
 # ...and so on
 ```
 
-If you look back one section, notice that `unit`, `site`, `month`, and `year` are all listed as **fields** for the "nvspl" Endpoint of the Dataset. So to filter an endpoint, you can use a keyword argument for each field you want to filter and a predicate for how to filter it. Predicates can be of many types, from strings to lists to functions, and each type has a different meaning. You ought to already know this from the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#filtering).
+If you look back one section, notice that `unit`, `site`, `month`, and `year` are all listed as **fields** for the "nvspl" Endpoint of the Dataset. So to filter an endpoint, you can use a keyword argument for each field you want to filter and a predicate for how to filter it. Predicates can be of many types, from strings to lists to functions, and each type has a different meaning. Of course, you already know this from the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#filtering).
 
 ### 3. Different Accessors, same interface
 
@@ -210,9 +210,55 @@ If you look back one section, notice that `unit`, `site`, `month`, and `year` ar
 # #################################                     operations chain     combine data
 ```
 
+iyore finds the data you want. The soundDB Accessors then read it into a useful structure. soundDB has accessors for reading these kinds of data:
+
+  Name in soundDB    |                           File type read
+-------------------- | --------------------------------------------------------------------
+`soundDB.nvspl`      | NVSPL files (i.e. `NVSPL_DENA7MIL_2001_12_29_00.txt`)
+`soundDB.srcid`      | SRCID files from SPLAT (i.e. `SRCID_DENA7MIL.txt`)
+`soundDB.loudevents` | LOUDEVENTS files (i.e. `LOUDEVENTS_DENA7MIL.txt`)
+`soundDB.audibility` | Listening Center files (i.e. `LA_DENABACK_2014_04_16_gjoseph.txt`)
+`soundDB.dailypa`    | Daily percent-time audible files (i.e. `DAILYPA_DENA7MIL.txt`)
+`soundDB.metrics`    | Metrics files (i.e. `Metrics_DENA7MIL.txt`)
+
+All of these Accessors work in the same way: given a Dataset (and possibly filters and other optional arguments), iterating through them yields tuples of `(key, data)`. `data` is usually a pandas data structure, but that varies between Accessors based on what's most appropriate for representing their data. `key` identifies where the data comes from&mdash;it's normally the iyore Entry from which the data was read; see below for when it's not. (Note on terminology: an Entry is a dict-like object of a single directory entry in a Dataset, and the information that can be parsed out of its name. We say "Entry" instead of "file", because it could refer to either a file or a directory, though file is most common.)
+
+So the signature for an Accessor is:
+
+```
+Accessor(ds, n= None, items= None, sort= None, **filters) -> Iterator[Tuple[key, data]]
+```
+
+#### Parameters:
+
++ `ds`: *iyore.Dataset*
+
+    The dataset to use. Each Accessor knows the name of the endpoint in which to find its data (i.e. the NVSPL Accessor will look for an "nvspl" endpoint in `ds`).
+
++ `n`: *int, default None*
+
+    Maximum number of Entries to read; handy for prototyping on big Datasets
+
++ `items`: *List[dict], default None*
+
+    If given, yields data which matches any of the filter dicts in the list.
+    Equivalent to the `items` argument of an iyore.Endpoint, which of course is documented in [the README](https://github.com/nationalparkservice/iyore#accessing-specific-entries)
+
++ `sort`: *str, Sequence[Str], or Callable[iyore.Entry], default None*
+
+    Order data by the given field name(s) or key function. Equivalent to the `sort` argument of an iyore.Endpoint, as documented in [the README](https://github.com/nationalparkservice/iyore#sorting)
+
++ `**filters`: *field_name=str, numeric, Iterable[str], Mapping[str, False], or Callable[[str], bool]*
+
+    Keyword argument for each field to filter, and predicate for how to filter it. Equivalent to filters of an iyore.Endpoint. See the [filtering section](#filtering) and the [iyore README](https://github.com/nationalparkservice/iyore#filtering).
+
++ Other optional arguments:
+
+    Specific Accessors can have additional arguments of their own. For example, `soundDB.nvspl` has the `columns` argument to specify which columns to read. See the built-in help for each Accessor for these.
+
 ### 4. Operating on data
 
-### 5. 
+### 5. Combining results
 
 
 
