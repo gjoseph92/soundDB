@@ -17,9 +17,10 @@ import pandas as pd
 import re
 import iyore
 
-class AccessorDocFiller(type):
+class AccessorMetaclass(type):
     """
-    Metaclass to insert boilerplate documentation into each Accessor subclass.
+    Metaclass to insert boilerplate documentation into each Accessor subclass,
+    pull out keyword arguments for prepareState, and generally ensure Accessors are implemented correctly.
 
     Each Accessor subclass's docstring should only have information specific to that kind of data.
     These sections should be:
@@ -51,29 +52,41 @@ class AccessorDocFiller(type):
         # For now, we're leaving it at this
         if clsname != "Accessor":
 
+            if dct.get("endpointName", None) is None:
+                raise NotImplementedError('No Endpoint name set for the Accessor "{}"'.format(clsname))
+
             # Format any special keyword arguments the Accessor's prepareState function has
-            prepareStateKwargs = ""
+            prepareStateArgspec = ""
+            prepareStateKwargs = []
             if "prepareState" in dct:
-                argspec = inspect.getargspec(dct["prepareState"])
-                if argspec.defaults is not None:
-                    kwargNames = argspec.args[ -len(argspec.defaults): ]
-                    prepareStateKwargs = " "+inspect.formatargspec(kwargNames, None, None, argspec.defaults)[1:-1] + ","
+                prepareArgspec = inspect.getargspec(dct["prepareState"])
+                if prepareArgspec.defaults is not None:
+                    # ensure prepareState's kwargs are not the same as any for Accessor.__init__
+                    initArgspec = inspect.getargspec(Accessor.__init__)
+                    initKwargs = initArgspec.args[ -len(initArgspec.defaults): ]
+                    prepareStateKwargs = prepareArgspec.args[ -len(prepareArgspec.defaults): ]
+                    for reserved in initKwargs:
+                        if reserved in prepareStateKwargs:
+                            raise TypeError("The keyword argument '{}' is already used by Accessor, please pick a different name in {}".format(reserved, clsname))
+
+                    prepareStateArgspec = " "+inspect.formatargspec(prepareStateKwargs, None, None, prepareArgspec.defaults)[1:-1] + ","
 
             # Fill in the subclassDocTemplate with information from the subclass
             fillin = {
                 "endpointName": dct.get("endpointName", clsname),
                 "subclassDocstring": inspect.cleandoc(dct.get("__doc__", "")),
                 "className": clsname,
-                "prepareStateKwargs": prepareStateKwargs
+                "prepareStateArgspec": prepareStateArgspec
             }
 
             newdoc = inspect.cleandoc(mcls.subclassDocTemplate).format(**fillin)
             dct["__doc__"] = newdoc
+            dct["_prepareStateKwargs"] = prepareStateKwargs
 
-        return super(AccessorDocFiller, mcls).__new__(mcls, clsname, bases, dct)
+        return super(AccessorMetaclass, mcls).__new__(mcls, clsname, bases, dct)
 
     subclassDocTemplate = """
-        {endpointName}(ds: iyore.Dataset, n=None, items=None, sort=None,{prepareStateKwargs} **filters)
+        {endpointName}(ds: iyore.Dataset, n=None, items=None, sort=None,{prepareStateArgspec} **filters)
 
         Access {className} data from the dataset ``ds`` that matches the given filters, and apply operations to it.
 
@@ -128,7 +141,7 @@ class AccessorDocFiller(type):
 
 
 
-class Accessor(with_metaclass(AccessorDocFiller, object)):
+class Accessor(with_metaclass(AccessorMetaclass, object)):
     """
     Abstract base class to create classes for accessing a specific kind of data from an iyore Dataset.
 
@@ -139,7 +152,7 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
 
     # Overridden in each subclass: name of the ``iyore.Endpoint`` where the kind of data
     # the Accessor handles is found
-    # endpointName = None
+    endpointName = None
 
     def parse(self, entry, state= None):
         """
@@ -182,21 +195,6 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
 
     def __init__(self, ds, n= None, items= None, sort= None, **filters):
 
-        # TODO: all this could be in a metaclass
-        ################################
-        if self.endpointName is None:
-            raise NotImplementedError('No Endpoint name set for the Accessor "{}"'.format(self.__class__.__name__))
-
-        # find out what prepareState's keyword arguments are so they can be pulled out when the Accessor is called
-        argspec = inspect.getargspec(self.prepareState)
-        if argspec.defaults is not None:
-            prepareStateKwargs = argspec.args[ -len(argspec.defaults): ]
-            for reserved in ("items", "sort"):
-                if reserved in prepareStateKwargs:
-                    raise TypeError("The keyword argument '{}' is already used by Accessor, please pick a different name".format(reserved))
-        else:
-            prepareStateKwargs = {}
-        #################################
 
         try:
             endpoint = getattr(ds, self.endpointName)
@@ -213,7 +211,8 @@ class Accessor(with_metaclass(AccessorDocFiller, object)):
             filters["items"] = items
 
         # split prepareState params from endpoint filters
-        self._prepareStateParams = { kwarg: filters.pop(kwarg) for kwarg in prepareStateKwargs if kwarg in filters }
+        # note: self._prepareStateKwargs was precomputed by the AccessorMetaclass
+        self._prepareStateParams = { kwarg: filters.pop(kwarg) for kwarg in self._prepareStateKwargs if kwarg in filters }
 
         self._endpoint = endpoint
         self._filters = filters
