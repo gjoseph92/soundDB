@@ -194,7 +194,9 @@ For example, to find NVSPL files from the park unit Denali, all site codes excep
 # ...and so on
 ```
 
-If you look back one section, notice that `unit`, `site`, `month`, and `year` are all listed as **fields** for the "nvspl" Endpoint of the Dataset. So to filter an endpoint, you can use a keyword argument for each field you want to filter and a predicate for how to filter it. Predicates can be of many types, from strings to lists to functions, and each type has a different meaning. Of course, you already know this from the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#filtering).
+If you look back one section, notice that `unit`, `site`, `month`, and `year` are all listed as **fields** for the "nvspl" Endpoint of the Dataset. So to filter an Endpoint, you can use a keyword argument for each field you want to filter and a predicate for how to filter it. Predicates can be of many types, from strings to lists to functions, and each type has a different meaning. Of course, you already know this from the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#filtering).
+
+This same filtering syntax is used when actually accessing data in your dataset, instead of just locating it with iyore:
 
 ### 3. Different Accessors, same interface
 
@@ -229,6 +231,8 @@ So the signature for an Accessor is:
 Accessor(ds, n= None, items= None, sort= None, **filters) -> Iterator[Tuple[key, data]]
 ```
 
+Notice that most of those arguments look the same as for an iyore Endpoint&mdash;because they are. The filter keyword arguments given to an Accessor, along with `items` and `sort`, are passed into the Endpoint that the Accessor reads its data from.
+
 #### Parameters:
 
 + `ds`: *iyore.Dataset*
@@ -257,6 +261,68 @@ Accessor(ds, n= None, items= None, sort= None, **filters) -> Iterator[Tuple[key,
     Specific Accessors can have additional arguments of their own. For example, `soundDB.nvspl` has the `columns` argument to specify which columns to read. See the built-in help for each Accessor for these.
 
 ### 4. Operating on data
+
+```python
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
+#           ----- --  ------------------------------ -------------------------- ---------
+#      _______/    |                 |                           |                 |
+#      |      iyore dataset          |                           |                 |
+#      |                             |                           |                 |
+#      |                         filter(s)                       |                 |
+#      |                                                         |                 |
+#   Accessor method for data type                     ####################         |
+#                                                     # operations chain #   combine data
+#                                                     ####################
+```
+
+Accessors let you iterate through the data one-by-one. Often, you want to apply the same operation to each piece of data. To simplify that, you can chain methods onto an Accessor which it will apply to each piece of data it processes.
+
+For example, `soundDB.srcid` yields pandas DataFrames which include the columns `len` and `MaxSPL`. To subselect just those two columns and compute their median for every SRCID file in the Dataset, you could do this:
+
+```python
+>>> for entry, data in soundDB.srcid(ds):
+...   result = data[["len", "MaxSPL"]].median()
+...   print(entry.site)
+...   print(result)
+...   print()
+MURI
+len       0 days 00:04:10
+MaxSPL               49.9
+dtype: object
+
+WOCR
+len       0 days 00:04:17
+MaxSPL               39.9
+dtype: object
+
+# ..and so on
+```
+
+Or, more concisely, apply those operations directly onto the Accessor:
+
+```python
+>>> for entry, result in soundDB.srcid(ds)[["len", "MaxSPL"]].median():
+...   print(entry.site)
+...   print(result)
+...   print()
+MURI
+len       0 days 00:04:10
+MaxSPL               49.9
+dtype: object
+
+WOCR
+len       0 days 00:04:17
+MaxSPL               39.9
+dtype: object
+
+# ..and so on
+```
+
+In general, any combination of attribute access (`.` notation), indexing (`[]` syntax), and calling (`(arg1, ...)` syntax) you do to an Accessor will be applied to the `data` it yields. Together, this is called the **operations chain**.
+
+##### Grouping
+
+
 
 ### 5. Combining results
 
