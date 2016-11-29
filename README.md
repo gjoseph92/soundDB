@@ -320,9 +320,26 @@ dtype: object
 
 In general, any combination of attribute access (`.` notation), indexing (`[]` syntax), and calling (`(arg1, ...)` syntax) you do to an Accessor will be applied to the `data` it yields. Together, this is called the **operations chain**.
 
-##### Grouping
+```
+Accessor -- yields --> Entry, data                      Entry, processed data
+                                ⤷---- Operations Chain -------------------⤴
+                   --> Entry, data                      Entry, processed data
+                                ⤷---- Operations Chain -------------------⤴
+                   --> Entry, data                      Entry, processed data
+                                ⤷---- Operations Chain -------------------⤴
+                   ...and so on
+```
 
+#### Grouping
 
+```
+Accessor.group(key) --> Entry, data --\
+                    --> Entry, data ---| == combine data within group ==> group_key, data                  group_key, processed data
+                    --> Entry, data --/                                               ⤷---- Operations Chain -------------------⤴
+                    --> Entry, data --\
+                    --> Entry, data ---| == combine data within group ==> group_key, data                  group_key, processed data
+                    --> Entry, data --/                                               ⤷---- Operations Chain -------------------⤴
+```
 
 ### 5. Combining results
 
