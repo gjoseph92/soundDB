@@ -178,7 +178,7 @@ Again, to learn about iyore Datasets and what they do, consult the [iyore README
 
 The main thing iyore Datasets do is allow you to filter your data to find files that match certain criteria, which is explained in the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#filtering). (Hopefully it's clear by now that understanding iyore is a prerequisite to using soundDB.)
 
-For example, to find NVSPL files from the park unit Denali, all site codes except `FANG` and `WEKH`, the months of March, April, and May, and years after 2009:
+For example, to find NVSPL files from the park unit Denali, all site codes except `FANG` and `WEKH`, from the months of March, April, and May, and years after 2009:
 
 ```python
 >>> for entry in ds.nvspl(unit= "DENA", site= {"FANG": False, "WEKH": False}, month= ["03","04","05"], year= lambda y: int(y) > 2009):
@@ -254,7 +254,7 @@ Notice that most of those arguments look the same as for an iyore Endpoint&mdash
 
 + `**filters`: *field_name=str, numeric, Iterable[str], Mapping[str, False], or Callable[[str], bool]*
 
-    Keyword argument for each field to filter, and predicate for how to filter it. Equivalent to filters of an iyore.Endpoint. See the [filtering section](#filtering) and the [iyore README](https://github.com/nationalparkservice/iyore#filtering).
+    Keyword argument for each field to filter, and predicate for how to filter it. Equivalent to filters of an iyore.Endpoint. See the [filtering section](#2-filtering) and the [iyore README](https://github.com/nationalparkservice/iyore#filtering).
 
 + Other optional arguments:
 
