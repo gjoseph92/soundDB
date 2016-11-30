@@ -443,14 +443,23 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
     def __iter__(self):
         state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
         entries = self._endpoint(sort= self._sort, n= self._n, **self._filters)
-        sys.stderr.write("Locating data...")
-        entries = list(entries)
-        sys.stderr.write("\r")
+
         try:
-            get_ipython     # if not in ipython at all, this will fail faster than tqdm_notebook
-            self._progbar = tqdm_notebook(entries, unit= "entries", desc= "Computing")
+            get_ipython
+            inNotebook = True
+        except NameError:
+            inNotebook = False
+
+        if not inNotebook:
+            sys.stderr.write("Locating data...")
+        entries = list(entries)
+        if not inNotebook:
+            sys.stderr.write("\r")
+
+        try:
+            self._progbar = tqdm_notebook(entries, unit= "entries")
         except (NameError, AttributeError, TypeError):
-            self._progbar = tqdm(entries, unit= "entries", desc= "Computing")
+            self._progbar = tqdm(entries, unit= "entries")
 
 
         def iterate():
