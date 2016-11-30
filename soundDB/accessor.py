@@ -11,11 +11,13 @@ import collections
 import traceback
 import inspect
 import warnings
+import sys
 
 import numpy as np
 import pandas as pd
 import re
 import iyore
+from tqdm import tqdm
 
 class AccessorMetaclass(type):
     """
@@ -218,9 +220,10 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         self._filters = filters
         self._sort = sort
         self._chain = []
+        self._n = n
 
-        if n is not None:
-            self._chain.append(lambda iterable: itertools.islice(iterable, n))
+        # if n is not None:
+        #     self._chain.append(lambda iterable: itertools.islice(iterable, n))
 
 
     @classmethod
@@ -391,7 +394,15 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
     def __getattr__(self, attr):
         def do_getattr(iterator):
             for entry, data in iterator:
-                yield entry, getattr(data, attr)
+                try:
+                    yield entry, getattr(data, attr)
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._progbar.write('Error while processing "{}":'.format(str(entry)))
+                    self._progbar.write( traceback.format_exc() )
+                    self._progbar.write("Data was:")
+                    self._progbar.write(repr(data))
 
         self._chain.append(do_getattr)
         return self
@@ -399,7 +410,15 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
     def __getitem__(self, *index):
         def do_getitem(iterator):
             for entry, data in iterator:
-                yield entry, data.__getitem__(*index)
+                try:
+                    yield entry, data.__getitem__(*index)
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._progbar.write('Error while processing "{}":'.format(str(entry)))
+                    self._progbar.write( traceback.format_exc() )
+                    self._progbar.write("Data was:")
+                    self._progbar.write(repr(data))
 
         self._chain.append(do_getitem)
         return self
@@ -407,25 +426,44 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
     def __call__(self, *args, **kwargs):
         def do_call(iterator):
             for entry, data in iterator:
-                yield (entry, data(*args, **kwargs))
+                try:
+                    yield (entry, data(*args, **kwargs))
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._progbar.write('Error while processing "{}":'.format(str(entry)))
+                    self._progbar.write( traceback.format_exc() )
+                    self._progbar.write("Data was:")
+                    self._progbar.write(repr(data))
 
         self._chain.append(do_call)
         return self
 
 
     def __iter__(self):
+        state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
+        entries = self._endpoint(sort= self._sort, n= self._n, **self._filters)
+        sys.stderr.write("Locating data...")
+        entries = list(entries)
+        sys.stderr.write("\r")
+        self._progbar = tqdm(entries, unit= "entries", desc= "Computing")
+
         def iterate():
-            state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
-            for entry in self._endpoint(sort= self._sort, **self._filters):
+            for entry in self._progbar:
                 try:
                     data = self.parse(entry, state= state) if state is not None else self.parse(entry)
+                    # self._progbar.write("Processing {}".format(entry.path))
                     yield entry, data
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    print('Error while processing "{}":'.format(entry.path))
-                    print( traceback.format_exc() )
+                    self._progbar.write('Error while parsing "{}":'.format(entry.path))
+                    self._progbar.write( traceback.format_exc() )
 
+        # chain the operations together
+        # each function in self._chain is a generator which takes an iterator
+        # (remember that you call a generator to "activate" it: calling a generator returns an iterator)
+        # so end condition for the loop is that `iterate` refers to an iterator
         iterate = iterate()
         for do in self._chain:
             iterate = do(iterate)
