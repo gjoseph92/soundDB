@@ -11,11 +11,13 @@ import collections
 import traceback
 import inspect
 import warnings
+import sys
 
 import numpy as np
 import pandas as pd
 import re
 import iyore
+from tqdm import tqdm, tqdm_notebook
 
 class AccessorMetaclass(type):
     """
@@ -218,9 +220,10 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         self._filters = filters
         self._sort = sort
         self._chain = []
+        self._n = n
 
-        if n is not None:
-            self._chain.append(lambda iterable: itertools.islice(iterable, n))
+        # if n is not None:
+        #     self._chain.append(lambda iterable: itertools.islice(iterable, n))
 
 
     @classmethod
@@ -284,7 +287,7 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
 
 
         if len(results) == 0:
-            return results
+            return None
 
         if len(results) == 1:
             key, result = results.popitem()
@@ -391,41 +394,82 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
     def __getattr__(self, attr):
         def do_getattr(iterator):
             for entry, data in iterator:
-                yield entry, getattr(data, attr)
-
+                try:
+                    yield entry, getattr(data, attr)
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self._progbar.write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getattr)
         return self
 
     def __getitem__(self, *index):
         def do_getitem(iterator):
             for entry, data in iterator:
-                yield entry, data.__getitem__(*index)
-
+                try:
+                    yield entry, data.__getitem__(*index)
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self._progbar.write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getitem)
         return self
 
     def __call__(self, *args, **kwargs):
         def do_call(iterator):
             for entry, data in iterator:
-                yield (entry, data(*args, **kwargs))
-
+                try:
+                    yield (entry, data(*args, **kwargs))
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    self._progbar.write( traceback.format_exc() )
         self._chain.append(do_call)
         return self
 
 
     def __iter__(self):
+        state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
+        entries = self._endpoint(sort= self._sort, n= self._n, **self._filters)
+
+        try:
+            get_ipython
+            inNotebook = True
+        except NameError:
+            inNotebook = False
+
+        if not inNotebook:
+            sys.stderr.write("Locating data...")
+        entries = list(entries)
+        if not inNotebook:
+            sys.stderr.write("\r")
+
+        try:
+            self._progbar = tqdm_notebook(entries, unit= "entries")
+        except (NameError, AttributeError, TypeError):
+            self._progbar = tqdm(entries, unit= "entries")
+
+
         def iterate():
-            state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
-            for entry in self._endpoint(sort= self._sort, **self._filters):
+            for entry in self._progbar:
                 try:
                     data = self.parse(entry, state= state) if state is not None else self.parse(entry)
                     yield entry, data
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    print('Error while processing "{}":'.format(entry.path))
-                    print( traceback.format_exc() )
+                    self._progbar.write('Error while parsing "{}":'.format(entry.path))
+                    self._progbar.write( traceback.format_exc() )
 
+        # chain the operations together
+        # each function in self._chain is a generator which takes an iterator
+        # (remember that you call a generator to "activate" it: calling a generator returns an iterator)
+        # so end condition for the loop is that `iterate` refers to an iterator
         iterate = iterate()
         for do in self._chain:
             iterate = do(iterate)
