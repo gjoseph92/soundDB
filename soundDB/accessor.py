@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import re
 import iyore
-from tqdm import tqdm
+from tqdm import tqdm, tqdm_notebook
 
 class AccessorMetaclass(type):
     """
@@ -446,7 +446,12 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         sys.stderr.write("Locating data...")
         entries = list(entries)
         sys.stderr.write("\r")
-        self._progbar = tqdm(entries, unit= "entries", desc= "Computing")
+        try:
+            get_ipython     # if not in ipython at all, this will fail faster than tqdm_notebook
+            self._progbar = tqdm_notebook(entries, unit= "entries", desc= "Computing")
+        except (NameError, AttributeError, TypeError):
+            self._progbar = tqdm(entries, unit= "entries", desc= "Computing")
+
 
         def iterate():
             for entry in self._progbar:
