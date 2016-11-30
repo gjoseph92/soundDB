@@ -287,7 +287,7 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
 
 
         if len(results) == 0:
-            return results
+            return None
 
         if len(results) == 1:
             key, result = results.popitem()
@@ -399,11 +399,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error while processing "{}":'.format(str(entry)))
-                    self._progbar.write( traceback.format_exc() )
-                    self._progbar.write("Data was:")
-                    self._progbar.write(repr(data))
-
+                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self._progbar.write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getattr)
         return self
 
@@ -415,11 +413,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error while processing "{}":'.format(str(entry)))
-                    self._progbar.write( traceback.format_exc() )
-                    self._progbar.write("Data was:")
-                    self._progbar.write(repr(data))
-
+                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self._progbar.write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getitem)
         return self
 
@@ -431,11 +427,8 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error while processing "{}":'.format(str(entry)))
+                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
                     self._progbar.write( traceback.format_exc() )
-                    self._progbar.write("Data was:")
-                    self._progbar.write(repr(data))
-
         self._chain.append(do_call)
         return self
 
@@ -466,7 +459,6 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
             for entry in self._progbar:
                 try:
                     data = self.parse(entry, state= state) if state is not None else self.parse(entry)
-                    # self._progbar.write("Processing {}".format(entry.path))
                     yield entry, data
                 except GeneratorExit:
                     raise GeneratorExit
