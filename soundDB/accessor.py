@@ -195,7 +195,7 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         """
         return None
 
-    def __init__(self, ds, n= None, items= None, sort= None, **filters):
+    def __init__(self, ds, n= None, items= None, sort= None, progbar= None, **filters):
 
 
         try:
@@ -221,10 +221,7 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         self._sort = sort
         self._chain = []
         self._n = n
-
-        # if n is not None:
-        #     self._chain.append(lambda iterable: itertools.islice(iterable, n))
-
+        self._progbar = progbar
 
     @classmethod
     def ID(cls, key):
@@ -255,6 +252,15 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
 
         if ID is None:
             ID = self.ID
+
+        # When just iterating through results, a progress bar is often not a good idea,
+        # since there may be print statements in the for loop. But when combining,
+        # it's usually helpful.
+        # So, passing progbar= False will never show a progress bar,
+        # probar= True will always show a progress bar,
+        # and progbar= None (default) will only show a progress bar when using .combine()
+        if self._progbar is None:
+            self._progbar = True
 
         results = collections.defaultdict(list)
         # build map of {ID: [data, data, ...]} (same ID may have multiple data, i.e. NVSPL or LA)
@@ -399,9 +405,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    self._write('Error in operations chain while processing "{}":'.format(str(entry)))
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    self._progbar.write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
+                    self._write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getattr)
         return self
 
@@ -413,9 +419,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    self._write('Error in operations chain while processing "{}":'.format(str(entry)))
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    self._progbar.write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
+                    self._write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getitem)
         return self
 
@@ -427,8 +433,8 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error in operations chain while processing "{}":'.format(str(entry)))
-                    self._progbar.write( traceback.format_exc() )
+                    self._write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    self._write( traceback.format_exc() )
         self._chain.append(do_call)
         return self
 
@@ -437,34 +443,40 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
         entries = self._endpoint(sort= self._sort, n= self._n, **self._filters)
 
-        try:
-            get_ipython
-            inNotebook = True
-        except NameError:
-            inNotebook = False
+        if self._progbar:
+            try:
+                get_ipython
+                inNotebook = True
+            except NameError:
+                inNotebook = False
 
-        if not inNotebook:
-            sys.stderr.write("Locating data...")
+            if not inNotebook:
+                sys.stderr.write("Locating data...")
+
         entries = list(entries)
-        if not inNotebook:
+
+        if self._progbar and not inNotebook:
             sys.stderr.write("\r")
 
-        try:
-            self._progbar = tqdm_notebook(entries, unit= "entries")
-        except (NameError, AttributeError, TypeError):
-            self._progbar = tqdm(entries, unit= "entries")
-
+        if self._progbar:
+            try:
+                get_ipython # will fail faster and more reliably than tqdm_notebook
+                entriesIterable = tqdm_notebook(entries, unit= "entries")
+            except (NameError, AttributeError, TypeError):
+                entriesIterable = tqdm(entries, unit= "entries")
+        else:
+            entriesIterable = entries
 
         def iterate():
-            for entry in self._progbar:
+            for entry in entriesIterable:
                 try:
                     data = self.parse(entry, state= state) if state is not None else self.parse(entry)
                     yield entry, data
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    self._progbar.write('Error while parsing "{}":'.format(entry.path))
-                    self._progbar.write( traceback.format_exc() )
+                    self._write('Error while parsing "{}":'.format(entry.path))
+                    self._write( traceback.format_exc() )
 
         # chain the operations together
         # each function in self._chain is a generator which takes an iterator
@@ -475,6 +487,14 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
             iterate = do(iterate)
         return iterate
 
-
+    def _write(self, msg):
+        """
+        Write error messages to the progress bar, if using one,
+        otherwise to stderr
+        """
+        if self._progbar:
+            tqdm.write(msg)
+        else:
+            print(msg, file= sys.stderr)
 
 
