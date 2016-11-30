@@ -11,11 +11,13 @@ import collections
 import traceback
 import inspect
 import warnings
+import sys
 
 import numpy as np
 import pandas as pd
 import re
 import iyore
+from tqdm import tqdm, tqdm_notebook
 
 class AccessorMetaclass(type):
     """
@@ -193,7 +195,7 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         """
         return None
 
-    def __init__(self, ds, n= None, items= None, sort= None, **filters):
+    def __init__(self, ds, n= None, items= None, sort= None, progbar= None, **filters):
 
 
         try:
@@ -218,10 +220,8 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         self._filters = filters
         self._sort = sort
         self._chain = []
-
-        if n is not None:
-            self._chain.append(lambda iterable: itertools.islice(iterable, n))
-
+        self._n = n
+        self._progbar = progbar
 
     @classmethod
     def ID(cls, key):
@@ -253,6 +253,15 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
         if ID is None:
             ID = self.ID
 
+        # When just iterating through results, a progress bar is often not a good idea,
+        # since there may be print statements in the for loop. But when combining,
+        # it's usually helpful.
+        # So, passing progbar= False will never show a progress bar,
+        # probar= True will always show a progress bar,
+        # and progbar= None (default) will only show a progress bar when using .combine()
+        if self._progbar is None:
+            self._progbar = True
+
         results = collections.defaultdict(list)
         # build map of {ID: [data, data, ...]} (same ID may have multiple data, i.e. NVSPL or LA)
         for key, data in iter(self):
@@ -279,12 +288,12 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 # apply processing function
                 results[ID_name] = func(flat, *args, **kwargs)
             except:
-                print('Error in final processing function while processing data for "{}":'.format(ID_name))
-                print( traceback.format_exc() )
+                self._write('Error in final processing function while processing data for "{}":'.format(ID_name))
+                self._write( traceback.format_exc() )
 
 
         if len(results) == 0:
-            return results
+            return None
 
         if len(results) == 1:
             key, result = results.popitem()
@@ -391,46 +400,113 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
     def __getattr__(self, attr):
         def do_getattr(iterator):
             for entry, data in iterator:
-                yield entry, getattr(data, attr)
-
+                try:
+                    yield entry, getattr(data, attr)
+                except KeyboardInterrupt:
+                    self._write('Interrupted in operations chain while processing "{}"'.format(str(entry)))
+                    break
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self._write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getattr)
         return self
 
     def __getitem__(self, *index):
         def do_getitem(iterator):
             for entry, data in iterator:
-                yield entry, data.__getitem__(*index)
-
+                try:
+                    yield entry, data.__getitem__(*index)
+                except KeyboardInterrupt:
+                    self._write('Interrupted in operations chain while processing "{}"'.format(str(entry)))
+                    break
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self._write( "".join(traceback.format_exception_only(exc_type, exc_value)) )
         self._chain.append(do_getitem)
         return self
 
     def __call__(self, *args, **kwargs):
         def do_call(iterator):
             for entry, data in iterator:
-                yield (entry, data(*args, **kwargs))
-
+                try:
+                    yield (entry, data(*args, **kwargs))
+                except KeyboardInterrupt:
+                    self._write('Interrupted in operations chain while processing "{}"'.format(str(entry)))
+                    break
+                except GeneratorExit:
+                    raise GeneratorExit
+                except:
+                    self._write('Error in operations chain while processing "{}":'.format(str(entry)))
+                    self._write( traceback.format_exc() )
         self._chain.append(do_call)
         return self
 
 
     def __iter__(self):
+        state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
+        entries = self._endpoint(sort= self._sort, n= self._n, **self._filters)
+
+        if self._progbar:
+            try:
+                get_ipython
+                inNotebook = True
+            except NameError:
+                inNotebook = False
+
+            if not inNotebook:
+                sys.stderr.write("Locating data...")
+
+        entries = list(entries)
+
+        if self._progbar and not inNotebook:
+            sys.stderr.write("\r")
+
+        if self._progbar:
+            try:
+                get_ipython # will fail faster and more reliably than tqdm_notebook
+                entriesIterable = tqdm_notebook(entries, unit= "entries")
+            except (NameError, AttributeError, TypeError):
+                entriesIterable = tqdm(entries, unit= "entries")
+        else:
+            entriesIterable = entries
+
         def iterate():
-            state = self.prepareState(self._endpoint, self._filters, **self._prepareStateParams)
-            for entry in self._endpoint(sort= self._sort, **self._filters):
+            for entry in entriesIterable:
                 try:
                     data = self.parse(entry, state= state) if state is not None else self.parse(entry)
                     yield entry, data
+                except KeyboardInterrupt:
+                    self._write('Interrupted while parsing "{}"'.format(entry.path))
+                    break
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
-                    print('Error while processing "{}":'.format(entry.path))
-                    print( traceback.format_exc() )
+                    self._write('Error while parsing "{}":'.format(entry.path))
+                    self._write( traceback.format_exc() )
 
+        # chain the operations together
+        # each function in self._chain is a generator which takes an iterator
+        # (remember that you call a generator to "activate" it: calling a generator returns an iterator)
+        # so end condition for the loop is that `iterate` refers to an iterator
         iterate = iterate()
         for do in self._chain:
             iterate = do(iterate)
         return iterate
 
-
+    def _write(self, msg):
+        """
+        Write error messages to the progress bar, if using one,
+        otherwise to stderr
+        """
+        if self._progbar:
+            tqdm.write(msg)
+        else:
+            print(msg, file= sys.stderr)
 
 
