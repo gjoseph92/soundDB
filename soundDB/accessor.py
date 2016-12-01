@@ -288,8 +288,8 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 # apply processing function
                 results[ID_name] = func(flat, *args, **kwargs)
             except:
-                print('Error in final processing function while processing data for "{}":'.format(ID_name))
-                print( traceback.format_exc() )
+                self._write('Error in final processing function while processing data for "{}":'.format(ID_name))
+                self._write( traceback.format_exc() )
 
 
         if len(results) == 0:
