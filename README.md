@@ -285,6 +285,7 @@ For example, `soundDB.srcid` yields pandas DataFrames which include the columns 
 ...   print(entry.site)
 ...   print(result)
 ...   print()
+...
 MURI
 len       0 days 00:04:10
 MaxSPL               49.9
@@ -305,6 +306,7 @@ Or, more concisely, apply those operations directly onto the Accessor:
 ...   print(entry.site)
 ...   print(result)
 ...   print()
+...
 MURI
 len       0 days 00:04:10
 MaxSPL               49.9
@@ -318,7 +320,7 @@ dtype: object
 # ..and so on
 ```
 
-In general, any combination of attribute access (`.` notation), indexing (`[]` syntax), and calling (`(arg1, ...)` syntax) you do to an Accessor will be applied to the `data` it yields. Together, this is called the **operations chain**.
+In general, any combination of attribute access (`.` notation), indexing (`[]` syntax), and calling (`(arg1, ...)` syntax) you do to an Accessor will be applied to the `data` it yields. Together, this is called the **operations chain**. The flow looks like this:
 
 ```
 Accessor -- yields --> Entry, data                      Entry, processed data
@@ -332,6 +334,25 @@ Accessor -- yields --> Entry, data                      Entry, processed data
 
 #### Grouping
 
+You can add the `.group()` method into the operations chain to combine the data of related Entries together&mdash;the arguments to `.group()` specify which field(s) to group by. Any operations in the chain following `.group()` will be applied to the data of each group as a whole, rather than file-by-file.
+
+For example, to compute the median `MaxSPL` value in all SRCID files for each year:
+
+```python
+>>> for key, data in soundDB.srcid(ds).group("year").MaxSPL.median():
+...     print(data, "dB :", key)
+...
+50.2 dB : 2001
+60.1 dB : 2002
+45.2 dB : 2005
+47.05 dB : 2006
+# ...and so on
+```
+
+So the `srcid` Accessor first reads all data from the year 2001. If there is more than one SRCID Entry from 2001, all of that data is concatenated into a single pandas DataFrame. Then the rest of the operations chain (`.MaxSPL.median()`) is applied to that single concatenated DataFrame, and the iterator yields that result. Then this continues for 2002, and so on. This is particularly powerful since only one group's data needs to be held in memory at a time, so very large datasets which would not fit in memory can be easily processed group-by-group.
+
+So using `.group()`, the flow looks like:
+
 ```
 Accessor.group(key) --> Entry, data --\
                     --> Entry, data ---| == combine data within group ==> group_key, data                  group_key, processed data
@@ -341,15 +362,31 @@ Accessor.group(key) --> Entry, data --\
                     --> Entry, data --/                                               ⤷---- Operations Chain -------------------⤴
 ```
 
+The argument(s) to `.group()` can be:
+
+- One or more strings which refer to fields of the Endpoint
+(such as "unit", "site", "year", etc.).
+- A function which takes an Entry object and returns a string, tuple, number, or other
+immutable value identifying which group the Entry belongs to.
+
+Note that no data is read from the files in the grouping phase, just their filenames.
+So data can only be grouped by metadata which can be gleaned from the text of the path
+to the file, not by their contents.
+
+Remember that iterating through an Accessor yields a tuple of `(key, data)`? Without `.group()`, `key` is the Entry from which the data was read. With `.group()`, `key` becomes the group that data represents. (`key` will be a string, or a tuple of strings if you used multiple groups, or maybe something else if you used your own grouping function.)
+
+Though `.group()` will most commonly come first in the operations chain, it doesn't have to. Any operations before `.group()` will be applied to the data from each Entry, and operations after are applied to the combined data for each group.
+
 ### 5. Combining results
 
 
 
-- Setting up python & miniconda
-- Knowledge prereqs: pandas, numpy, python basics
 
 
 -------------------
+
+- Setting up python & miniconda
+- Knowledge prereqs: pandas, numpy, python basics
 
 ## Installation
 
