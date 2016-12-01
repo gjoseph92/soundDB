@@ -379,9 +379,55 @@ Though `.group()` will most commonly come first in the operations chain, it does
 
 ### 5. Combining results
 
+```python
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
+#           ----- --  ------------------------------ -------------------------- ---------
+#      _______/    |                 |                           |                 |
+#      |      iyore dataset          |                           |                 |
+#      |                             |                           |                 |
+#      |                         filter(s)                       |                 |
+#      |                                                         |                 |
+#   Accessor method for data type                                |         ################
+#                                                       operations chain   # combine data #
+#                                                                          ################
+```
 
+All our examples so far have used a for loop to iterate through the Accessor:
 
+```python
+>>> for key, data in soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median():
+...   print(key, ":", data)
+...
+2009 : 0 days 00:03:04
+2010 : 0 days 00:03:51
+2011 : 0 days 00:03:54
+2012 : 0 days 00:01:01
+```
 
+That gets annoying.
+
+Instead, tacking `.combine()` onto the end of the operations chain will, unsurprisingly, combine all of the results into a single data structure and return it:
+
+```python
+>>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
+100%|###################################################| 44/44 [00:00<00:00, 68.20entries/s]
+2009   00:03:04
+2010   00:03:51
+2011   00:03:54
+2012   00:01:01
+dtype: timedelta64[ns]
+# ^ this is a pandas Series
+```
+
+You even get a progress bar. How nice.
+
+`.combine()` will feign a bit of intelligence by putting your data into whatever structure seems the most appropriate. If you want to know it, this is the logic:
+
+- If all the data have mostly the same axis values (i.e. same labels for rows/columns), the data will be *promoted* into the next-higher-dimensional data structure (i.e. scalars --> Series, Series --> DataFrame, DataFrames --> Panel)
+- If index values differ (but columns are mostly the same, if a DataFrame), the data will be concatenated
+- If all the axis values are wildly different, or the data aren't pandas structures, `.combine()` will throw up its hands, mutter about idiomatic data types, and return to you a dict of `{ID (a string): data}`.
+
+`.combine()` also takes a keyword argument `func`, so you can pass the data through a final processing function. For each piece of data, `func` will be called with that data as its argument (and any other arguments given to `.combine()` are passed on to `func`), and its result is what will ultimately be combined. If working with pandas structures, it's better to use [`pipe()`](http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.pipe.html), but `.combine()` is there if you need it.
 
 -------------------
 
