@@ -35,44 +35,42 @@ Endpoints:
 
     # compute median event length by year, for years after 2008
 >>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
-2009    00:03:15
-2010    00:03:20
-2011    00:05:04
-2012    00:04:22
-2013    00:03:11
-2014    00:05:01
-2015    00:04:41
-2016    00:04:16
+100%|###########################################| 44/44 [00:00<00:00, 56.19entries/s]
+2009   00:03:04
+2010   00:03:51
+2011   00:03:54
+2012   00:01:01
 dtype: timedelta64[ns]
 
     # compute median number of events above L_nat per hour for each year
->>> soundDB.loudevents(ds).group("year")["above"].median(axis=0).combine()
-      2005  2006  2007  2008  2009  2010  2011  2012  2013  2014  2015  2016
-hour                                                                        
-0        1     3     0     3     4     4     3     2     4     0     5     5
-1        1     2     4     3     4     4     1     3     2     2     5     5
-2        4     2     3     0     5     3     2     4     5     0     2     4
-3        4     2     2     1     2     5     5     2     3     5     5     1
-4        5     4     0     1     5     1     2     3     3     2     3     3
-5        0     0     1     4     1     1     1     0     5     1     0     2
-6        0     5     0     0     0     3     2     5     5     5     4     3
-7        1     3     3     1     1     0     2     2     5     4     0     3
-8        5     3     0     1     5     2     4     1     5     1     4     4
-9        4     2     5     5     2     0     1     5     5     5     1     2
-10       4     5     5     2     1     4     4     1     5     0     0     5
-11       5     2     2     4     4     5     5     3     2     2     2     4
-12       5     3     0     1     0     4     1     0     2     0     0     1
-13       1     1     5     2     4     3     0     1     4     1     4     3
-14       2     1     5     1     2     3     5     0     4     3     1     0
-15       5     5     0     4     0     5     4     5     5     5     0     5
-16       2     3     4     0     0     1     5     0     4     5     4     1
-17       4     2     1     0     1     0     2     4     3     1     5     1
-18       5     0     3     4     0     1     0     1     5     3     2     0
-19       5     5     4     3     5     4     0     0     1     4     3     3
-20       2     4     0     2     2     2     0     3     4     4     5     2
-21       5     3     1     1     4     2     0     4     0     3     2     0
-22       0     5     2     1     3     1     2     1     3     3     0     1
-23       1     3     3     5     1     0     4     0     0     2     3     1
+>>> soundDB.loudevents(ds)["above"].group("year").median().combine()
+100%|##########################################| 62/62 [00:00<00:00, 109.77entries/s]
+      2001  2002  2005  2006  2007  2008  2009  2010  2011  2012
+hour
+0        0     0     0     0     0     0     0     0     0     0
+1        0     0     0     0     0     0     0     0     0     0
+2        0     0     0     0     0     0     0     0     0     0
+3        0     0     0     0     0     0     0     0     0     0
+4        0     0     0     0     0     0     0     0     0     0
+5        0     0     0     0     0     0     0     0     0     0
+6        0     0     0     0     0     0     0     0     0     0
+7        0     0     0     0     0     0     0     0     0     0
+8        0     1     1     1     0     0     0     0     0     0
+9        1     2     1     1     0     0     0     0     0     0
+10       1     4     1     1     1     0     0     1     1     0
+11       2     5     2     1     0     1     1     1     1     0
+12       2     5     1     1     1     0     1     1     1     0
+13       2     5     1     2     0     0     0     0     0     0
+14       2     5     1     1     0     0     0     0     0     0
+15       4     4     1     1     0     1     0     0     1     0
+16       2     4     2     1     1     0     0     0     0     0
+17       2     5     1     1     0     0     0     0     1     0
+18       1     4     1     1     0     0     0     0     1     0
+19       1     4     1     1     0     0     0     0     0     0
+20       0     3     1     1     0     0     0     0     0     0
+21       0     1     0     0     0     0     0     0     0     0
+22       0     0     0     0     0     0     0     0     0     0
+23       0     0     0     0     0     0     0     0     0     0
 
     # read all listening center files for the sites THRI, UPST, and MURI
     # into a single pandas DataFrame
@@ -427,7 +425,54 @@ You even get a progress bar. How nice.
 - If index values differ (but columns are mostly the same, if a DataFrame), the data will be concatenated
 - If all the axis values are wildly different, or the data aren't pandas structures, `.combine()` will throw up its hands, mutter about idiomatic data types, and return to you a dict of `{ID (a string): data}`.
 
-`.combine()` also takes a keyword argument `func`, so you can pass the data through a final processing function. For each piece of data, `func` will be called with that data as its argument (and any other arguments given to `.combine()` are passed on to `func`), and its result is what will ultimately be combined. If working with pandas structures, it's better to use [`pipe()`](http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.pipe.html), but `.combine()` is there if you need it.
+`.combine()` also takes a keyword argument `func`, so you can pass the data through a final processing function. For each piece of data, `func` will be called with that data as its argument (and any other arguments given to `.combine()` are passed on to `func`), and its result is what will ultimately be combined. If working with pandas structures, it's better to use [`pipe()`](http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.pipe.html), but `func` is there if you need it.
+
+### 6. Review
+
+Let's summarize:
+
+iyore Datasets allow data to be located based on patterns in the names of files and folders.
+
+```python
+>>> import iyore
+>>> ds = iyore.Dataset("E:/AKRO Soundscape Data/")
+>>> ds
+Dataset("E:/AKRO Soundscape Data/")
+Endpoints:
+  * audibility - fields: day, listener, month, name, site, unit, year
+  * audio - fields: day, hour, min, month, name, sec, site, unit, year
+  * dailypa - fields: name, site, unit, year
+  * loudevents - fields: name, site, unit, year
+  * metrics - fields: name, site, unit, year
+  * nvspl - fields: day, hour, month, name, site, unit, year
+  * srcid - fields: name, site, unit, year
+```
+
+iyore just locates data, but doesn't read it. Accessors do.
+
+```python
+>>> for entry in ds.
+```
+
+Accessors take an iyore Dataset and keyword arguments for how to filter it, and act as iterators, yielding tuples of `(key, data)`.
+
+```python
+```
+
+Any operations chained onto an Accessor will be applied to `data` on each iteration.
+
+```python
+```
+
+Adding `.group()` into that operations chain (and specifying the fields to group by) will combine data within Entries of the same group, and subsequent operations in the chain are applied to each group's combined data.
+
+```python
+```
+
+Suffixing the operations chain with `.combine()` will combine all the data into a single structure and return it.
+
+```python
+```
 
 -------------------
 
