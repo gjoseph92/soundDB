@@ -419,7 +419,7 @@ dtype: timedelta64[ns]
 
 You even get a progress bar. How nice.
 
-`.combine()` will feign a bit of intelligence by putting your data into whatever structure seems the most appropriate. If you want to know it, this is the logic:
+`.combine()` will feign a bit of intelligence by putting your data into whatever structure seems the most appropriate. Generally, this is the logic:
 
 - If all the data have mostly the same axis values (i.e. same labels for rows/columns), the data will be *promoted* into the next-higher-dimensional data structure (i.e. scalars --> Series, Series --> DataFrame, DataFrames --> Panel)
 - If index values differ (but columns are mostly the same, if a DataFrame), the data will be concatenated
@@ -448,30 +448,46 @@ Endpoints:
   * srcid - fields: name, site, unit, year
 ```
 
-iyore just locates data, but doesn't read it. Accessors do.
+iyore just locates data, but doesn't read it.
 
 ```python
->>> for entry in ds.
+>>> for entry in ds.nvspl(unit= "DENA", year= ["2010", "2011"]):
+...     print(entry.path)
+... 
+
 ```
 
-Accessors take an iyore Dataset and keyword arguments for how to filter it, and act as iterators, yielding tuples of `(key, data)`.
+Accessors read the data that iyore locates. Given an iyore Dataset and keyword arguments for how to filter it, they act as iterators, yielding tuples of `(key, data)`.
 
 ```python
+>>> for entry, data in soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]):
+...     print(entry.path)
+...     print(data)
+... 
 ```
 
 Any operations chained onto an Accessor will be applied to `data` on each iteration.
 
 ```python
+>>> for entry, data in soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).query("WindSpeed < 1").dbA.median():
+...     print(entry.path)
+...     print(data)
+... 
 ```
 
 Adding `.group()` into that operations chain (and specifying the fields to group by) will combine data within Entries of the same group, and subsequent operations in the chain are applied to each group's combined data.
 
 ```python
+>>> for entry, data in soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).group("site").query("WindSpeed < 1").dbA.median():
+...     print(entry.path)
+...     print(data)
+... 
 ```
 
 Suffixing the operations chain with `.combine()` will combine all the data into a single structure and return it.
 
 ```python
+>>> soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).group("site").query("WindSpeed < 1").dbA.median().combine()
 ```
 
 -------------------
