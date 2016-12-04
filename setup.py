@@ -19,5 +19,5 @@ setup(
     license= "CC0 1.0",
 
     packages= find_packages(exclude= ["doc"]),
-    install_requires= ['iyore', 'future', 'numpy', 'pandas', 'tqdm']
+    install_requires= ['iyore', 'future', 'numpy', 'pandas == 0.18.1', 'tqdm']
     )
