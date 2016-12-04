@@ -491,7 +491,8 @@ Suffixing the operations chain with `.combine()` will combine all the data into 
 
 If you are using conda on Windows, you need to ensure the difficult compiled libraries are installed the easy way, via conda:
 
-1. Install numpy and pandas: `conda install numpy pandas`
+1. Install numpy and pandas: `conda install pandas=0.18 numpy`
+  - soundDB is currently only compatible with pandas v0.18 (see issue #5)
 2. Let pip install soundDB and iyore: `pip install --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB`
 3. When you need to upgrade soundDB, ensure that pip doesn't try to upgrade numpy and pandas as well: `pip install --upgrade --no-deps --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ iyore soundDB`
 
