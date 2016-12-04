@@ -31,8 +31,6 @@ Endpoints:
   * srcid - fields: name, site, unit, year
   * wav - fields: name, site, unit, year
 
-# TODO: run these on acutal data
-
     # compute median event length by year, for years after 2008
 >>> soundDB.srcid(ds, year= lambda y: int(y) > 2008).group("year").len.median().combine()
 100%|###########################################| 44/44 [00:00<00:00, 56.19entries/s]
@@ -71,11 +69,6 @@ hour
 21       0     1     0     0     0     0     0     0     0     0
 22       0     0     0     0     0     0     0     0     0     0
 23       0     0     0     0     0     0     0     0     0     0
-
-    # read all listening center files for the sites THRI, UPST, and MURI
-    # into a single pandas DataFrame
->>> df = soundDB.audibility(ds, site=["THRI", "UPST", "MURI"]).combine()
-
 ```
 
 ## First, the problem
@@ -491,9 +484,6 @@ Suffixing the operations chain with `.combine()` will combine all the data into 
 ```
 
 -------------------
-
-- Setting up python & miniconda
-- Knowledge prereqs: pandas, numpy, python basics
 
 ## Installation
 
