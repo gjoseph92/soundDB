@@ -2,8 +2,6 @@
 
 A library for the [NPS Natural Sounds & Night Skies Division](https://www.nps.gov/orgs/1050/index.htm) to make going from data-somewhere-on-disk to data-ready-for-processing as painless as possible.
 
-:construction: *README under construction. Proceed with care.* :construction:
-
 ----------------------------------
 
 ## Demo
