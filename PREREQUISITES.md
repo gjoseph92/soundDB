@@ -54,4 +54,22 @@ To do so, open Command Prompt and run this command:
 conda install pandas=0.18.1 numpy scipy matplotlib jupyter numexpr bottleneck
 ```
 
-*(`numexpr` and `bottleneck` are recommended dependencies of pandas that improve performance. Pandas is explicitly restricted to v0.18.1 because the newest version is incompatible for now; see issue #5)*
+*(`numexpr` and `bottleneck` are recommended dependencies of pandas that improve performance. Pandas is explicitly restricted to v0.18.1 because the newest version is incompatible with soundDB for now; see issue #5)*
+
+## Installing soundDB
+
+soundDB and iyore are both pure-Python packages&mdash;no code needs to be compiled to install them. The standard package manager `pip` can handle that perfectly well on Windows, and it was simpler to distribute these packages through `pip`.
+
+Miniconda doesn't install `pip` by default, so first we'll do that. In a Command Prompt window, run:
+
+```
+conda install pip
+```
+
+Next, install soundDB from my custom package index on GitHub with `pip`:
+
+```
+pip install --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
+```
+
+To test that this worked, open a Python interpreter (type `python` and press Enter). Type `import soundDB` and press Enter. Nothing might happen for a few seconds, then the command will finish and a new input line will appear, beginning with `>>>`. If there are no error messages, the installation worked.
