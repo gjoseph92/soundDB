@@ -518,6 +518,8 @@ HEGL    34.3
 
 ## Installation
 
+See the [PREREQUISITES](PREREQUISITES.md) document for guides to installing and getting started in Python.
+
 ### Windows
 
 If you are using conda on Windows, you need to ensure the difficult compiled libraries are installed the easy way, via conda:
