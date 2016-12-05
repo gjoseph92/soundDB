@@ -88,16 +88,14 @@ class AccessorMetaclass(type):
         return super(AccessorMetaclass, mcls).__new__(mcls, clsname, bases, dct)
 
     subclassDocTemplate = """
-        {endpointName}(ds: iyore.Dataset, n=None, items=None, sort=None,{prepareStateArgspec} **filters)
+        {endpointName}(ds: iyore.Dataset, n=None, items=None, sort=None, progbar= None,{prepareStateArgspec} **filters)
 
-        Access {className} data from the dataset ``ds`` that matches the given filters, and apply operations to it.
+        Access {className} data from the dataset `ds` that matches the given filters, and apply operations to it.
 
         {subclassDocstring}
 
-        Documentation common to all Accessors
-        =====================================
-
-        A quick-reference for how Accessors for all types of files are used. 
+        Quick-reference for all Accessors
+        =================================
 
         Parameters
         ----------
@@ -116,29 +114,48 @@ class AccessorMetaclass(type):
 
         sort : str, iterable of str, or function, default None
 
-            How to sort the results. If ``str`` or iterable of ``str``, must be field(s) of the NVSPL Endpoint of the given Dataset.
-            If function, must take an ``iyore.Entry`` and return a value to represent that Entry when sorting.
+            How to sort the results. If `str` or iterable of `str`, must be field(s) of the
+            NVSPL Endpoint of the given Dataset. If function, must take an `iyore.Entry`
+            and return a value to represent that Entry when sorting.
+
+        progbar : bool, default None
+
+            If True, always display a progress bar; if False, never. If None (default), only display
+            a progress bar when using `.compute()` (so print statements in a for loop don't compete with it).
 
         **filters : str, number, dict of {{str: False}}, iterable of str, or function
 
             Restrict results to Entries which match the given values in the specified fields
 
-        Returns
-        -------
-        For more, see the documentation for ``soundDB.Query``.
+        Yields
+        ------
 
-        ``soundDB.Query`` object, which can be used in these ways:
+        Tuple of `(key, data)`. `key` will be the iyore.Entry the `data` was read from,
+        or a string of the group `data` represents if `.group()` is used.
 
-            - ``.groupby()``: bundle the data into groups by year, site, etc., apply operations to summarize each group,
-                              combine the results computed from all the groups into a DataFrame (like pandas groupby).   
+        Operations Chaining
+        -------------------
 
-            - ``.all()``: return a DataFrame of all the data contained in the Dataset.
+        Any combination of attribute access, indexing, and calling chained onto Accessor
+        will be applied to the `data` it yields.
 
-            - ``.one()``: return one Entry object whose ``data`` attribute contains a pandas structure
+        Adding these methods into the chain have special effects:
 
-            - ``.sorted()``: iterate in a particular order through Entry objects whose ``data`` attributes contain pandas structures.
-            
-            - As an iterable, which yields Entry objects whose ``data`` attributes contain pandas structures.
+        - `.group(*groups)`
+
+            Given fields to group by (`"site"`, `"year"`, etc.), concatenate data
+            within each group and yield a single tuple of `(group, data)` for each.
+            Any prior operations in the chain are applied to every Entry regardless of group,
+            and subsequent operations apply to each group's data once combined.
+
+        - `.combine(func= lambda x: x, ID= None, *args, **kwargs)
+
+            Combine all data into a single structure and return it. Data which can be sensibly combined
+            into the next-higher-dimensional structure will be (e.g. multiple Series with same index into a
+            DataFrame, DataFrames with same columns and index into a Panel). Otherwise, it will be concatenated,
+            or returned as a dict of `{ID (a string): data}` as a last resort.
+
+            Data is passed through `func` before combining, which recieves any extra arguments given to `combine`.
     """
 
 
