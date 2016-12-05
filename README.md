@@ -447,7 +447,10 @@ iyore just locates data, but doesn't read it.
 >>> for entry in ds.nvspl(unit= "DENA", year= ["2010", "2011"]):
 ...     print(entry.path)
 ... 
-
+"E:2010 DENAKAHP Kahiltna Pass\01 DATA\NVSPL\NVSPL_DENAKAHP_2010_06_15_02.txt"
+"E:2010 DENAKAHP Kahiltna Pass\01 DATA\NVSPL\NVSPL_DENAKAHP_2010_06_15_03.txt"
+"E:2010 DENAKAHP Kahiltna Pass\01 DATA\NVSPL\NVSPL_DENAKAHP_2010_06_15_04.txt"
+# ...
 ```
 
 Accessors read the data that iyore locates. Given an iyore Dataset and keyword arguments for how to filter it, they act as iterators, yielding tuples of `(key, data)`.
@@ -457,6 +460,15 @@ Accessors read the data that iyore locates. Given an iyore Dataset and keyword a
 ...     print(entry.path)
 ...     print(data)
 ... 
+"E:2010 DENABELA Beaver Lake\01 DATA\NVSPL\NVSPL_DENABELA_2010_08_24_00.txt"
+                       SiteID  12.5  15.8    20    25  31.5   40   50   63  \
+date
+2010-08-24 00:00:00  DENABELA  28.4  24.5  18.4  12.9  13.2  9.9  8.8  7.3
+2010-08-24 00:00:01  DENABELA  30.7  22.0  15.3  14.3  10.4  9.8  8.8  8.4
+...                       ...   ...   ...   ...   ...   ...  ...  ...  ...
+2010-08-24 00:59:58  DENABELA  23.2  23.5  12.2  11.3  10.4  6.8  4.3  7.7
+2010-08-24 00:59:59  DENABELA  20.0  19.1  19.9  13.5  11.5  9.3  7.6  8.7
+# ...
 ```
 
 Any operations chained onto an Accessor will be applied to `data` on each iteration.
@@ -464,23 +476,44 @@ Any operations chained onto an Accessor will be applied to `data` on each iterat
 ```python
 >>> for entry, data in soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).query("WindSpeed < 1").dbA.median():
 ...     print(entry.path)
-...     print(data)
+...     print("* Median low-wind dBA:", data)
 ... 
+"E:2010 DENABELA Beaver Lake\01 DATA\NVSPL\NVSPL_DENABELA_2010_08_24_00.txt"
+* Median low-wind dBA: 35.7
+"E:2010 DENABELA Beaver Lake\01 DATA\NVSPL\NVSPL_DENABELA_2010_08_24_01.txt"
+* Median low-wind dBA: 35.4
+"E:2010 DENABELA Beaver Lake\01 DATA\NVSPL\NVSPL_DENABELA_2010_08_24_02.txt"
+* Median low-wind dBA: 35.2
 ```
 
 Adding `.group()` into that operations chain (and specifying the fields to group by) will combine data within Entries of the same group, and subsequent operations in the chain are applied to each group's combined data.
 
 ```python
->>> for entry, data in soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).group("site").query("WindSpeed < 1").dbA.median():
-...     print(entry.path)
-...     print(data)
+>>> for group, data in soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).query("WindSpeed < 1").dbA.group("site").median():
+...     print(group)
+...     print("* Median low-wind dBA:", data)
 ... 
+BELA
+* Median low-wind dBA: 37.3
+ESTO
+* Median low-wind dBA: 20.5
+FANG
+* Median low-wind dBA: 18.7
+HEGL
+* Median low-wind dBA: 34.3
+# ...
 ```
 
 Suffixing the operations chain with `.combine()` will combine all the data into a single structure and return it.
 
 ```python
->>> soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).group("site").query("WindSpeed < 1").dbA.median().combine()
+>>> soundDB.nvspl(ds, unit= "DENA", year= ["2010", "2011"]).query("WindSpeed < 1").dbA.group("site").median().combine()
+100%|##########################################| 3216/3216 [02:36<00:00, 20.49entries/s]
+BELA    37.3
+ESTO    20.5
+FANG    18.7
+HEGL    34.3
+# ^ a pandas DataFrame
 ```
 
 -------------------
