@@ -402,6 +402,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
             for entry, data in iterator:
                 try:
                     yield entry, getattr(data, attr)
+                except KeyboardInterrupt:
+                    self._write('Interrupted in operations chain while processing "{}"'.format(str(entry)))
+                    break
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
@@ -416,6 +419,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
             for entry, data in iterator:
                 try:
                     yield entry, data.__getitem__(*index)
+                except KeyboardInterrupt:
+                    self._write('Interrupted in operations chain while processing "{}"'.format(str(entry)))
+                    break
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
@@ -430,6 +436,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
             for entry, data in iterator:
                 try:
                     yield (entry, data(*args, **kwargs))
+                except KeyboardInterrupt:
+                    self._write('Interrupted in operations chain while processing "{}"'.format(str(entry)))
+                    break
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
@@ -472,6 +481,9 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 try:
                     data = self.parse(entry, state= state) if state is not None else self.parse(entry)
                     yield entry, data
+                except KeyboardInterrupt:
+                    self._write('Interrupted while parsing "{}"'.format(entry.path))
+                    break
                 except GeneratorExit:
                     raise GeneratorExit
                 except:
