@@ -11,9 +11,9 @@ with open(path.join(here, "README.md"), encoding= "utf-8") as f:
 setup(
     name= "soundDB",
     version= "0.1.0",
-    description= "A library for the NPS Natural Sounds & Night Skies Division to make going from data-somewhere-on-disk to data-ready-for-processing as painless as possible",
+    description= "Query and load NSNSD acoustic data into Python, minimize pain",
     long_description= long_description,
-    url= "https://github.com/nationalparkservice/soundDB",
+    url= "https://github.com/gjoseph92/soundDB",
     author= "Gabe Joseph",
     author_email= "gabriel_joseph@partner.nps.gov",
     license= "CC0 1.0",
