@@ -155,7 +155,7 @@ However you want to learn, I'd suggest that you feel comfortable with (almost) a
     - `set`
     - strings
 - List slicing syntax
-- Iteration
+- Iteration (`for` loops)
     - Through lists
     - Through dicts (using `.keys()`, `.values()`, and `.items()`)
     - Iterators: `range`, `enumerate`, `zip`
@@ -167,9 +167,9 @@ However you want to learn, I'd suggest that you feel comfortable with (almost) a
   - *Thinking about function contracts and invariants (how you'd learn functions in a CS101 class)*
   - Arguments
   - Returning values
-  - Recursion
+  - *Recursion*
   - Keyword arguments
-  - Lambdas
+  - *Lambdas*
   - *Writing documentation strings*
   - *Unpacking multiple returned values*
 
