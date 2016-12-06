@@ -1,6 +1,20 @@
 # Prerequisites for using soundDB
 
-Here are some guidelines for getting started with soundDB, from [installing Python](#installing-python) to resources for [learning the language](#learning-python).
+<!-- MarkdownTOC autolink=true depth=2 bracket=round -->
+
+- [Logistics and Installation](#logistics-and-installation)
+    - [First Step: Windows Command Prompt](#first-step-windows-command-prompt)
+    - [Installing Python](#installing-python)
+    - [Using Python](#using-python)
+- [Learning Python](#learning-python)
+    - [Base Python language](#base-python-language)
+    - [The Python Scientific Computing Stack](#the-python-scientific-computing-stack)
+- [Other topics](#other-topics)
+    - [Virtual Environments](#virtual-environments)
+    - [Text Editor](#text-editor)
+
+<!-- /MarkdownTOC -->
+
 
 # Logistics and Installation
 
@@ -38,7 +52,7 @@ The typical Anaconda installation pre-installes hundreds of popular packages for
 
     To exit the Python interpreter, press `Ctrl`+`Z`, then Enter.
 
-## Installing necessary packages
+### Installing necessary packages
 
 As a start, I recommend installing these packages, which form the base of the Python scientific computing stack:
 
@@ -56,7 +70,7 @@ conda install pandas=0.18.1 numpy scipy matplotlib jupyter numexpr bottleneck
 
 *(`numexpr` and `bottleneck` are recommended dependencies of pandas that improve performance. Pandas is explicitly restricted to v0.18.1 because the newest version is incompatible with soundDB for now; see issue #5)*
 
-## Installing soundDB
+### Installing soundDB
 
 soundDB and iyore are both pure-Python packages&mdash;no code needs to be compiled to install them. The standard package manager `pip` can handle that perfectly well on Windows, and it was simpler to distribute these packages through `pip`.
 
@@ -80,6 +94,26 @@ As you've seen, to run the Python interpreter, you just run the `python` command
 
 Python scripts are text files ending in `.py`, which really just contain a sequence of commands for that interpreter to execute. To run a Python script, `cd` to the folder containing it in the Command Prompt, then run `python <script_name.py>`.
 
+### Using Jupyter Notebook
+
+The interactive Python interpreter is helpful, but particularly for exploring data, it's nice to have an environment more like MATLAB or RStudio, where you can edit and rerun code you've written, create graphics, and write nicely-formatted notes and explanation along with your code.
+
+[Jupyter](http://jupyter.org/) does this. It's a bit like Mathematica or MATLAB&mdash;except that it runs in a web browser. You can try it online here: <https://try.jupyter.org/>.
+
+When using Jupyter, you create "notebook" files (`.ipynb`). These store your code, but they also store any output it produces (including graphics). This means you can share your notebooks (or put them on GitHub) and others can see your code and its results without rerunning it, or even needing the data. You can also export them as HTML files to share with people who don't have Python.
+
+To run Jupyter Notebook, open the Command Prompt, `cd` into the directory in which you want to save your notebooks, and run `jupyter notebook`. After a couple seconds, a new page will open in your web browser. Create a new Python notebook and start writing.
+
+Jupyter is easily learned through Googling and experimentation. A few things to know to get started, though:
+
+- You enter code in cells. To run a cell, hit `Shift`-`Enter`.
+- Press Tab to auto-complete variable names. Even better, if you have an object stored as, say, `metrics`, if you type `metrics.` and hit Tab, you'll see a list of all the attributes of the `metrics` object.
+- Press `Shift`-`Tab` for documentation. The more times in a row you press it, the more documentation you get.
+
+Great documentation for Jupyter notebooks can be found [here](http://nbviewer.jupyter.org/github/ipython/ipython/blob/3.x/examples/Notebook/Index.ipynb). (Jupyter used to be called IPython; this documentation is still accurate.)
+
+Using Jupyter isn't necessary, but it can be a nicer environment for experimenting and learning, especially when working with pandas.
+
 # Learning Python
 
 Unlike R or MATLAB, Python is not a language designed specifically for statistics or scientific computing. It's a general-purpose high-level programming language used for everything from running web servers to controlling robots to building neural networks to geoprocessing to cleaning data. Due to its thoughtful design and extensibility, though, a mature ecosystem of packages has emerged that provide tools and data structures which have made it extremely popular for scientific computing.
@@ -88,23 +122,68 @@ All this means that "learning Python" is an oversimplification. To use soundDB, 
 
 soundDB itself is actually rather simple. Sort of like how using driving directions with Google Maps is simple, but you need to know how to drive a car.
 
+That could seem discouraging, but take it another way: because Python is so general-purpose, it's an extremely valuable investment of your time to learn. As you become proficient with Python, you may find yourself using it for tasks which have nothing to do with soundDB and NVSPL files.
+
 ## Base Python language
 
-Just learning to program? Try [Learn Python the Hard Way](https://learnpythonthehardway.org/book/), or the [Think Python](http://greenteapress.com/thinkpython/thinkpython.pdf) textbook. You will learn to program well, slowly.
+If you are just beginning to program, Python is one of the best places to start.
 
-Already a proficient programmer? Try [Crash into Python](https://stephensugden.com/crash_into_python/), which may end up feeling exactly like that. Or get familiar with the syntax at <https://learnxinyminutes.com/docs/python3/>. The best option might be the official [Python tutorial](https://docs.python.org/3/tutorial/index.html), and skim ahead through parts you already understand.
+- [Learn Python the Hard Way](https://learnpythonthehardway.org/book/) is an intimidatingly-named but very popular resource for learning both the basics of programming and the Python language.
+- The [Think Python](http://greenteapress.com/thinkpython/thinkpython.pdf) textbook is a great option, both for beginners and those cowboy codeslingers who want to finally put in the time to learn to think like computer scientists.
+
+So you think you can program?
+
+- Try [Crash into Python](https://stephensugden.com/crash_into_python/), which may end up feeling exactly like that.
+- Get familiar with the syntax at <https://learnxinyminutes.com/docs/python3/>.
+- Best option? Read the [Python tutorial](https://docs.python.org/3/tutorial/index.html) and skim through parts you already understand.
+
+### Topics to Understand
+
+However you want to learn, I'd suggest that you feel comfortable with (almost) all of these topics before moving on to NumPy, pandas, and the other scientific computing tools for Python. Topics in *italics* are helpful, but not as necessary. Googling any of these as `python <topic>` should get you all the answers you need. (FYI, being a computer scientist just means Googling things until you figure them out.)
+
+- Basics
+    - Assigning variables
+    - `print()`
+    - Comparisons (`==`, `<`, `>`, `<=`, `>=`, `is`, `is not`)
+    - Boolean logic (`x and y`, `y or not z`)
+    - `if`, `elif`, and `else`
+    - Built-in `help()`
+- Python data structures
+    - `list`
+    - `tuple`
+    - `dict`
+    - `set`
+    - strings
+- List slicing syntax
+- Iteration
+    - Through lists
+    - Through dicts (using `.keys()`, `.values()`, and `.items()`)
+    - Iterators: `range`, `enumerate`, `zip`
+    - *`map`*
+- List and dictionary comprehensions
+- *Reading and writing files*
+
+- Functions
+  - *Thinking about function contracts and invariants (how you'd learn functions in a CS101 class)*
+  - Arguments
+  - Returning values
+  - Recursion
+  - Keyword arguments
+  - Lambdas
+  - *Writing documentation strings*
+  - *Unpacking multiple returned values*
+
+- Importing modules
+
+- *Classes*
+  - *What is a class? What's an instance of a class? Why use classes?*
+  - *What is `self`?*
+  - *Magic methods*
+
 
 ## The Python Scientific Computing Stack
 
-### Jupyter
-
-[Jupyter](http://jupyter.org/) is an interactive environment for Python (and a number of other languages, actually) that combines code and nicely formatted text in cells, a bit like Mathematica or MATLAB&mdash;except that it runs in a web browser. You can try it online here: <https://try.jupyter.org/>.
-
-To run jupyter notebook, open the Command Prompt, `cd` into the directory in which you want to save your notebooks, and run `jupyter notebook`. After a couple seconds, a new page will open in your web browser. Create a new Python notebook.
-
-Jupyter is easily learned through Googling and experimentation. To get started, you really just need to know that you run cells with `shift`-`enter` (like Mathematica).
-
-Using Jupyter isn't necessary, but it can be a nicer environment for experimenting and learning, especially when working with pandas.
+Time for the fun parts:
 
 ### NumPy
 
@@ -118,7 +197,7 @@ Helpful references: [NumPy routines](http://docs.scipy.org/doc/numpy/reference/r
 
 ### pandas
 
-pandas is a little like Excel, but made out of NumPy.
+Think of pandas as a combination of Excel and NumPy.
 
 If you like, get an overview at [Greg Reda's introduction](http://gregreda.com/2013/10/26/intro-to-pandas-data-structures/).
 
@@ -126,13 +205,31 @@ Then dive into the official documentation. Start with [Intro to Data Structures]
 
 Once you feel you understand pandas pretty well, read Tom Augspurger's [Modern Pandas series](https://tomaugspurger.github.io/modern-1.html) to learn how to use pandas *well*.
 
+### Visualization
+
+There are a number of options for plotting in Python. In my opinion, there's still no one really good tool&mdash;in any language.
+
+[matplotlib](http://matplotlib.org/) is the most popular and powerful plotting library, and serves as the base for some of the others. But the syntax and styling can be a pain. It's modeled after MATLAB's plotting, which might make you feel comfortable, or disgusted, or both.
+
+Tip: to use matplotlib nicely in Jupyter, add this line after importing it:
+
+```
+%matplotlib inline
+```
+
+(That's a "magic" command that makes your plots render into the browser.)
+
+After playing with matplotlib a bit, read [Tom Augspurger's article about visualization](https://tomaugspurger.github.io/modern-6-visualization.html) and consider learning [seaborn](http://seaborn.pydata.org/) too.
+
+I'm personally very excited about [Vega](https://vega.github.io/vega/) (compiled with [Vincent](https://vincent.readthedocs.io/en/latest/index.html) in Python) and [Vega-lite](https://vega.github.io/vega-lite/) (with [Altair](https://altair-viz.github.io/) in Python), but have yet to use them. There's a good chance these could become the best way to succinctly and comprehensibly produce almost any visualization.
+
 # Other topics
 
-### Virtual Environments
+## Virtual Environments
 
 <http://conda.pydata.org/docs/using/envs.html>
 
-### Text Editor
+## Text Editor
 
 You could write and edit Python scripts in Notepad if you want. But a nice text editor with syntax highlighting, autocomplete, and other features makes things much easier and pleasant.
 
