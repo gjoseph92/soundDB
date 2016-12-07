@@ -28,6 +28,14 @@ You only really need to know the very basics: changing directories (`cd`) and li
 
 To run Command Prompt, press Start and search for "Command Prompt" or "cmd". I recommend making a shortcut too, since you'll use it often (right-click the icon while it's open and click "Pin this program to taskbar").
 
+Tips:
+
+- Copying and pasting in Command Prompt is particularly unintuitive.
+    - To copy, select text with the mouse and press `Enter`.
+    - To paste, right-click and the text will be inserted wherever your blinking cursor is.
+- You can type the beginning of a file or folder name and press Tab to auto-complete
+- The up and down arrows cycle through previous commands
+
 ## Installing Python
 
 There are many ways to install a Python. The complexity has less to do with installing the Python interpreter itself, and more with installing and managing all the packages (libraries) that comprise the Python ecosystem. For Windows users, this is especially difficult, since the standard Python package manager ([pip](https://pip.pypa.io/en/stable/)) is hampered by Microsoft's lack of inclusion of C++ compiler. Either installing a compiler or finding the right pre-compiled versions of the libraries you need is a pain.
@@ -38,7 +46,7 @@ The typical Anaconda installation pre-installes hundreds of popular packages for
 
 1. Download the Python 3.5 64-bit Windows installer from <http://conda.pydata.org/miniconda.html>
 2. Run the installer and follow the instructions. If unsure about any setting, simply accept the defaults as they all can be changed later.
-3. When finished, a new Command Prompt window will open. If not, run Command Prompt yourself.
+3. When finished, open Command Prompt.
 4. Type `conda --version` and hit Enter. If you see a version number, and not error messages, the installation worked.
 5. Type `python` and hit Enter. You should see something like this:
 
@@ -62,13 +70,33 @@ As a start, I recommend installing these packages, which form the base of the Py
 - [Matplotlib](http://matplotlib.org/) - Comprehensive 2D Plotting
 - [Jupyter](http://jupyter.org/) - Interactive data science environment, like MATLAB
 
-To do so, open Command Prompt and run this command:
+To do so, open Command Prompt and run this command (remember you can paste into Command Prompt by right-clicking):
 
 ```
 conda install pandas=0.18.1 numpy scipy matplotlib jupyter numexpr bottleneck
 ```
 
 *(`numexpr` and `bottleneck` are recommended dependencies of pandas that improve performance. Pandas is explicitly restricted to v0.18.1 because the newest version is incompatible with soundDB for now; see issue #5)*
+
+Did you get an error about `[SSL: CERTIFICATE_VERIFY_FAILED]`? Are you on the NPS network? Read on.
+
+#### Sidebar: The Government is Decrypting Your Secure Internet Connection
+
+In September 2016, DOI IT implemented "SSL Visibility" for secure Internet traffic on its network. "SSL Visibility" is a pleasant term for a man-in-the-middle attack: your connection passes through a device on the DOI network, which decrypts your secure traffic, scans it (for "malware and malicious links"), and re-encrypts it before sending it to its real destination. You can read an explanation of [how this works](http://www.zdnet.com/article/how-the-nsa-and-your-boss-can-intercept-and-break-ssl/), and the [security vulnerabilities it introduces](https://insights.sei.cmu.edu/cert/2015/03/the-risks-of-ssl-inspection.html).
+
+Encryption uses "certificates", which verify a server is actually who it says it is. DOI has automatically installed a certificate on NPS computers so that they believe connections passing through this decrypting device are genuine. However, conda uses its own list of certificates. When it tries to connect, it doesn't recognize the certificate it gets as valid, and concludes that the server it reached is not who it says it is&mdash;which, in fact, is correct.
+
+To make this work:
+
+1. Download the DOI Root Certificate [from Google Drive](https://drive.google.com/file/d/0B551gy_Kqih1Y202VlFubnJPcFU/view). If that doesn't work, use [the DOI official link](http://blockpage.doi.gov/images/DOIRootCA.crt) instead&mdash;but know that this link is, ironically, insecure and theoretically opens a moderate security risk if anyone cared to exploit it.
+2. Move the certificate file to your home folder. (You can put it elsewhere, but you'll need to adjust the commands you copy from this document accordingly.) Your home folder is `C:\Users\<your_username>`; click your full name in the top-right of the Start menu to open it.
+3. Run this command in Command Prompt:
+
+    ```
+    conda config --set ssl_verify "%USERPROFILE%\DOIRootCA.cer"
+    ```
+
+4. Try the prior `conda install` command again. (Press the up arrow in Command Prompt to rerun previous commands.)
 
 ### Installing soundDB
 
@@ -80,23 +108,15 @@ To install soundDB from my custom package index on GitHub with `pip`, run this c
 pip install --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
 ```
 
-Did you get an error about `[SSL: CERTIFICATE_VERIFY_FAILED]`? Are you on the NPS network? Read on.
+If you are on the NPS network and had certificate issues with conda, this will fail too. Assuming you already [downloaded the DOI Root Certificate](#sidebar-the-government-is-decrypting-your-secure-internet-connection) and put it in your home folder, here's the workaround:
 
-#### Sidebar: The Government is Decrypting Your Secure Internet Connection
-
-In September 2016, DOI IT implemented "SSL Visibility" for secure Internet traffic on its network. "SSL Visibility" is a pleasant term for a man-in-the-middle attack: your connection passes through a device on the DOI network, which decrypts your secure traffic, scans it (for "malware and malicious links"), and re-encrypts it before sending it to its real destination. You can read an explanation of [how this works](http://www.zdnet.com/article/how-the-nsa-and-your-boss-can-intercept-and-break-ssl/), and the [security vulnerabilities it introduces](https://insights.sei.cmu.edu/cert/2015/03/the-risks-of-ssl-inspection.html).
-
-Encryption uses "certificates", which verify a server is actually who it says it is. DOI has automatically installed a certificate on NPS computers so that they believe connections passing through this decrypting device are genuine. However, `pip` uses its own list of certificates. When it tries to connect to `github.com`, it's finding that `github.com` is not who it says it is&mdash;which, in fact, is correct.
-
-To make this work:
-
-1. Download the DOI Root Certificate [from Google Drive](https://drive.google.com/file/d/0B551gy_Kqih1Y202VlFubnJPcFU/view). If that doesn't work, use [the DOI official link](http://blockpage.doi.gov/images/DOIRootCA.crt) instead&mdash;but know that this link is, ironically, insecure and theoretically opens a significant security risk if anyone cared to exploit it.
-2. Any time you use `pip`, add the `--cert=<path/to/certificate/file>` flag. If you downloaded the certificate to your Downloads folder, you can use `--cert="%USERPROFILE%\Downloads\DOIRootCA.cer"`.
-3. Assuming the certificate file is in your downloads folder and named `DOIRootCA.cer`, the command to install soundDB becomes:
+- Any time you use `pip`, add the `--cert="%USERPROFILE%\DOIRootCA.cer"` flag.
+- Assuming the certificate file is in your home folder and named `DOIRootCA.cer`, the command to install soundDB becomes:
 
     ```
-    pip install --cert="%USERPROFILE%\Downloads\DOIRootCA.cer" --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
+    pip install --cert="%USERPROFILE%\DOIRootCA.cer" --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
     ```
+
 
 #### Testing the Installation
 
@@ -116,7 +136,7 @@ The interactive Python interpreter is helpful, but particularly for exploring da
 
 When using Jupyter, you create "notebook" files (`.ipynb`). These store your code, but they also store any output it produces (including graphics). This means you can share your notebooks (or put them on GitHub) and others can see your code and its results without rerunning it, or even needing the data. You can also export them as HTML files to share with people who don't have Python.
 
-To run Jupyter Notebook, open the Command Prompt, `cd` into the directory in which you want to save your notebooks, and run `jupyter notebook`. After a couple seconds, a new page will open in your web browser. Create a new Python notebook and start writing.
+To run Jupyter Notebook, open the Command Prompt, `cd` into the directory in which you want to save your notebooks, and run `jupyter notebook`. After a couple seconds, a new page will open in your web browser. Create a new Python notebook and start writing. (If Internet Explorer opens instead of Chrome, you might want to make Chrome your default browser by opening the [Chrome settings page](chrome://settings) and scrolling to the bottom.)
 
 Jupyter is easily learned through Googling and experimentation. A few things to know to get started, though:
 
