@@ -74,19 +74,33 @@ conda install pandas=0.18.1 numpy scipy matplotlib jupyter numexpr bottleneck
 
 soundDB and iyore are both pure-Python packages&mdash;no code needs to be compiled to install them. The standard package manager `pip` can handle that perfectly well on Windows, and it was simpler to distribute these packages through `pip`.
 
-Miniconda doesn't install `pip` by default, so first we'll do that. In a Command Prompt window, run:
-
-```
-conda install pip
-```
-
-Next, install soundDB from my custom package index on GitHub with `pip`:
+To install soundDB from my custom package index on GitHub with `pip`, run this command:
 
 ```
 pip install --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
 ```
 
-To test that this worked, open a Python interpreter (type `python` and press Enter). Type `import soundDB` and press Enter. Nothing might happen for a few seconds, then the command will finish and a new input line will appear, beginning with `>>>`. If there are no error messages, the installation worked. Exit the interpreter with `Ctrl`+`Z`.
+Did you get an error about `[SSL: CERTIFICATE_VERIFY_FAILED]`? Are you on the NPS network? Read on.
+
+#### Sidebar: The Government is Decrypting Your Secure Internet Connection
+
+In September 2016, DOI IT implemented "SSL Visibility" for secure Internet traffic on its network. "SSL Visibility" is a pleasant term for a man-in-the-middle attack: your connection passes through a device on the DOI network, which decrypts your secure traffic, scans it (for "malware and malicious links"), and re-encrypts it before sending it to its real destination. You can read an explanation of [how this works](http://www.zdnet.com/article/how-the-nsa-and-your-boss-can-intercept-and-break-ssl/), and the [security vulnerabilities it introduces](https://insights.sei.cmu.edu/cert/2015/03/the-risks-of-ssl-inspection.html).
+
+Encryption uses "certificates", which verify a server is actually who it says it is. DOI has automatically installed a certificate on NPS computers so that they believe connections passing through this decrypting device are genuine. However, `pip` uses its own list of certificates. When it tries to connect to `github.com`, it's finding that `github.com` is not who it says it is&mdash;which, in fact, is correct.
+
+To make this work:
+
+1. Download the DOI Root Certificate [from Google Drive](https://drive.google.com/file/d/0B551gy_Kqih1Y202VlFubnJPcFU/view). If that doesn't work, use [the DOI official link](http://blockpage.doi.gov/images/DOIRootCA.crt) instead&mdash;but know that this link is, ironically, insecure and theoretically opens a significant security risk if anyone cared to exploit it.
+2. Any time you use `pip`, add the `--cert=<path/to/certificate/file>` flag. If you downloaded the certificate to your Downloads folder, you can use `--cert="%USERPROFILE%\Downloads\DOIRootCA.cer"`.
+3. Assuming the certificate file is in your downloads folder and named `DOIRootCA.cer`, the command to install soundDB becomes:
+
+    ```
+    pip install --cert="%USERPROFILE%\Downloads\DOIRootCA.cer" --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB
+    ```
+
+#### Testing the Installation
+
+To test that everything worked, open a Python interpreter (type `python` and press Enter). Type `import soundDB` and press Enter. Nothing might happen for a few seconds, then the command will finish and a new input line will appear, beginning with `>>>`. If there are no error messages, the installation worked. Exit the interpreter with `Ctrl`+`Z`.
 
 ## Using Python
 

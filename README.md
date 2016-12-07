@@ -529,6 +529,8 @@ If you are using conda on Windows, you need to ensure the difficult compiled lib
 2. Let pip install soundDB and iyore: `pip install --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ soundDB`
 3. When you need to upgrade soundDB, ensure that pip doesn't try to upgrade numpy and pandas as well: `pip install --upgrade --no-deps --extra-index-url https://gjoseph92.github.io/soundDB/packages/ --extra-index-url https://nationalparkservice.github.io/iyore/packages/ iyore soundDB`
 
+Note: if you are on the NPS network, you'll need to follow the instructions on the PREREQUISITES document about [supplying the certificate](PREREQUISITES.md#sidebar-the-government-is-decrypting-your-secure-internet-connection) which DOI IT uses to decrypt and scan your secure Internet traffic.
+
 ### Everyone else
 
 Just use this command to both install and upgrade:
