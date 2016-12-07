@@ -2,6 +2,26 @@
 
 A library for the [NPS Natural Sounds & Night Skies Division](https://www.nps.gov/orgs/1050/index.htm) to make going from data-somewhere-on-disk to data-ready-for-processing as painless as possible.
 
+<!-- MarkdownTOC autolink=true depth=3 bracket=round -->
+
+- [Demo](#demo)
+- [First, the problem](#first-the-problem)
+- [The system](#the-system)
+- [How to use soundDB, piece by piece](#how-to-use-sounddb-piece-by-piece)
+  - [1. iyore Datasets](#1-iyore-datasets)
+  - [2. Filtering](#2-filtering)
+  - [3. Different Accessors, same interface](#3-different-accessors-same-interface)
+  - [4. Operating on data](#4-operating-on-data)
+  - [5. Combining results](#5-combining-results)
+  - [6. Review](#6-review)
+- [Installation](#installation)
+  - [Windows](#windows)
+  - [Everyone else](#everyone-else)
+  - [Public domain](#public-domain)
+
+<!-- /MarkdownTOC -->
+
+
 ----------------------------------
 
 ## Demo
