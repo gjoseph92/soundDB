@@ -135,7 +135,7 @@ Your data might consist of many, many files, stored in many folders, all stored 
 
 A structure file is a plain-text file which describes the directory hierarchy of your dataset and where important data is found within it, denoting the patterns of the names of files and folders&mdash;and what parts of those names mean&mdash;using regular expressions.
 
-To learn about structure file syntax, see the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#structuring).
+To learn about structure file syntax, see the [iyore README](https://github.com/nationalparkservice/iyore/blob/master/README.md#structuring). Some example NSNSD structure files are available in [this repository](https://github.com/gjoseph92/Structure-Files).
 
 Once you have a structure file written, save it in the root directory of your dataset (everything in a structure file is assumed to be relative to its location). The standard name is `.structure.txt`. Now your data is ready for iyore.
 
