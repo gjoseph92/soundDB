@@ -115,7 +115,7 @@ class AccessorMetaclass(type):
         sort : str, iterable of str, or function, default None
 
             How to sort the results. If `str` or iterable of `str`, must be field(s) of the
-            NVSPL Endpoint of the given Dataset. If function, must take an `iyore.Entry`
+            {endpointName} Endpoint of the given Dataset (i.e., must be . If function, must take an `iyore.Entry`
             and return a value to represent that Entry when sorting.
 
         progbar : bool, default None
