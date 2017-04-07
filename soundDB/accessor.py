@@ -347,6 +347,15 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
                 try:
                     if percentIndexOverlap("index", results) >= overlapThreshold:
                         return pd.DataFrame.from_dict(results, orient= "columns")
+
+                        # This may be a better idea, but it needs more consideration,
+                        # since the inconsistency could be very hard to code with
+                        
+                        # for column labels, use whichever is smaller between the IDs and the row labels
+                        # if len(exampleResult) > len(results):
+                        #     return pd.DataFrame.from_dict(results, orient= "columns")
+                        # else:
+                        #     return pd.DataFrame.from_dict(results, orient= "index")
                     else:
                         return pd.concat(results)
                 except AttributeError:
