@@ -280,7 +280,7 @@ class SRCID(Accessor):
         if 'MaxSPLt' in data.columns:
             if data.MaxSPLt.dtype == np.object:
                 # There are noise-free days in this dataset
-                converted = pd.to_numeric(data[['MaxSPLt', 'SELt']], errors= "coerce")
+                converted = data[['MaxSPLt', 'SELt']].apply(pd.to_numeric, errors= "coerce")
                 noisefree = converted.isnull().all(axis= 1)
                 data.loc[noisefree, ["userName", "tagDate"]] = data.loc[noisefree, ['MaxSPLt', 'SELt']].values
                 data[['MaxSPLt', 'SELt']] = converted
