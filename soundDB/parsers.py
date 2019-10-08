@@ -344,7 +344,25 @@ class Audibility(Accessor):
     The ``time`` column is dropped, and instead combined with the date specified in the header to give
     the DataFrame a DatetimeIndex. If present, the ``listener`` field in the header is added as a column.
 
-    <TODO>
+    Example Resulting DataFrame
+    ---------------------------
+
+    <class 'pandas.core.frame.DataFrame'>
+    DatetimeIndex: 288 entries, 2014-03-06 00:00:00 to 2014-03-06 23:55:00
+    Data columns (total 11 columns):
+    time        288 non-null object
+    src1        288 float64
+    src2        288 float64
+    src3        288 float64
+    src4        288 float64
+    src5        288 float64
+    src6        288 float64
+    src7        288 float64
+    notes       288 object
+    tagDate     288 non-null datetime64[ns]
+    listener    288 non-null object
+    dtypes: datetime64[ns](1), float64(7), object(3)
+    memory usage: 169.6+ KB
     """
     endpointName = "audibility"
 
@@ -372,6 +390,9 @@ class Audibility(Accessor):
         df.index = day + pd.to_timedelta(df.time)
         df.index.name = "date"
         df.drop("time", axis= 1)
+        
+        # Update the source columns with a numeric suffix so they can be more easily filtered
+        df.columns = ["time", "src1", "src2", "src3", "src4", "src5", "src6", "src7", "notes", "tagdate"]
 
         # Keep terminology consistent with other types of files
         df.rename(columns= {"tagdate": "tagDate"}, inplace= True)
