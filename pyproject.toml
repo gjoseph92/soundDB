@@ -1,0 +1,21 @@
+[tool]
+[tool.poetry]
+name = "soundDB"
+version = "0.1.0"
+description = "Query and load NSNSD acoustic data into Python, minimize pain"
+license = "CC0 1.0"
+homepage = "https://github.com/gjoseph92/soundDB"
+authors = ["Gabe Joseph <gabriel_joseph@partner.nps.gov>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "*"
+iyore = "*"
+future = "*"
+numpy = "*"
+pandas = "==0.18.1"
+tqdm = "*"
+
+[[tool.poetry.source]]
+name = "iyore"
+url = "https://nationalparkservice.github.io/iyore/packages"
