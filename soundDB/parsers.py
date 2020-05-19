@@ -185,7 +185,7 @@ class NVSPL(Accessor):
             presentNumericCols = df.columns.intersection(numericCols)
             if len(presentNumericCols) > 0:
                 # df[presentNumericCols] = df[presentNumericCols].convert_objects(convert_dates= False, convert_numeric= True, convert_timedeltas= False, copy= False)
-                df[presentNumericCols].astype('float32', copy= False, raise_on_error= False)
+                df[presentNumericCols].astype('float32', copy= False, errors= 'ignore')
 
         except KeyError:
             pass
@@ -484,7 +484,7 @@ class DailyPA(Accessor):
         # data.index.set_levels(datetimes, level= 'date', inplace= True)
 
         # Ensure MultiIndex sortedness
-        data.sortlevel(inplace= True)
+        data.sort_index(inplace= True)
 
         return data.apply(pd.to_numeric, raw= True, errors= "coerce")
 
