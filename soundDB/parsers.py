@@ -840,7 +840,7 @@ class Metrics(Accessor):
                 # Reduce them to just a Series, with season as the index
                 n.columns.name = "Season"
                 n.index.name = "Table"
-                if all( n.index == [None] ):
+                if all( n.index == None ):
                     ns[metricName] = n.iloc[0]
                 # arr = xr.DataArray(n)
                 # print(arr.dtype)
