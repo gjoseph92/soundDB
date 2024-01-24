@@ -9,7 +9,7 @@ authors = ["Gabe Joseph <gabriel_joseph@partner.nps.gov>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 iyore = "*"
 future = "*"
 numpy = "*"
@@ -17,6 +17,14 @@ pandas = "*"
 xarray = "*"
 tqdm = "*"
 
+[tool.poetry.group.dev.dependencies]
+sphinx = {version = "^5", python = "^3.8"}
+
 [[tool.poetry.source]]
 name = "iyore"
 url = "https://nationalparkservice.github.io/iyore/packages"
+priority = "supplemental"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
