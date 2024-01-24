@@ -59,19 +59,21 @@ class AccessorMetaclass(type):
 
             # Format any special keyword arguments the Accessor's prepareState function has
             prepareStateArgspec = ""
-            prepareStateKwargs = []
+            prepareStateKwargNames = []
             if "prepareState" in dct:
-                prepareArgspec = inspect.getargspec(dct["prepareState"])
-                if prepareArgspec.defaults is not None:
+                prepareStateSignature = inspect.signature(dct["prepareState"])
+                prepareStateParams = {k: p for k, p in prepareStateSignature.parameters.items() if p.default is not inspect.Parameter.empty}
+                prepareStateKwargNames = list(prepareStateParams)
+                if prepareStateParams:
                     # ensure prepareState's kwargs are not the same as any for Accessor.__init__
-                    initArgspec = inspect.getargspec(Accessor.__init__)
-                    initKwargs = initArgspec.args[ -len(initArgspec.defaults): ]
-                    prepareStateKwargs = prepareArgspec.args[ -len(prepareArgspec.defaults): ]
-                    for reserved in initKwargs:
-                        if reserved in prepareStateKwargs:
-                            raise TypeError("The keyword argument '{}' is already used by Accessor, please pick a different name in {}".format(reserved, clsname))
+                    initSignature = inspect.signature(Accessor.__init__)
+                    initKwargsNames = {k for k, p in initSignature.parameters.items() if p.default is not inspect.Parameter.empty}
+                    invalid = initKwargsNames.intersection(prepareStateKwargNames)
+                    if invalid:
+                        raise TypeError("The keyword arguments '{}' are already used by Accessor, please pick a different name in {}".format(invalid, clsname))
 
-                    prepareStateArgspec = " "+inspect.formatargspec(prepareStateKwargs, None, None, prepareArgspec.defaults)[1:-1] + ","
+                    prepareStateArgspec = str(inspect.Signature(list(prepareStateParams.values())))
+                    prepareStateArgspec = f" {prepareStateArgspec[1:-1]},"
 
             # Fill in the subclassDocTemplate with information from the subclass
             fillin = {
@@ -83,7 +85,7 @@ class AccessorMetaclass(type):
 
             newdoc = inspect.cleandoc(mcls.subclassDocTemplate).format(**fillin)
             dct["__doc__"] = newdoc
-            dct["_prepareStateKwargs"] = prepareStateKwargs
+            dct["_prepareStateKwargs"] = prepareStateKwargNames
 
         return super(AccessorMetaclass, mcls).__new__(mcls, clsname, bases, dct)
 
@@ -101,7 +103,7 @@ class AccessorMetaclass(type):
         ----------
 
         ds : iyore.Dataset
-            
+
             The Dataset from which to access the NVSPL files
 
         n : int, default None
@@ -356,7 +358,7 @@ class Accessor(with_metaclass(AccessorMetaclass, object)):
             elif isinstance(exampleResult, pd.DataFrame):
                 # if all DataFrames have the same have the same indicies and columns --> Panel
                 # if just have same columns and different indicies (of same dtype, i.e. DatetimeIndex) --> MultiIndexed DataFrame (like .all())
-                
+
                 # if at least 75% of columns overlap in all results, consider them worth combining
                 # (75% is a pretty arbitrary number...)
                 if percentIndexOverlap("columns", results) >= overlapThreshold:
