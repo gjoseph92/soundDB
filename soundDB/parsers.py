@@ -279,7 +279,7 @@ class SRCID(Accessor):
         # so they get filled with userName and tagDate, giving them a mixed type instead of float
         # Resolve this by finding zero-noise rows and setting all their values to NaN (more appropriate than 0)
         if 'MaxSPLt' in data.columns:
-            if data.MaxSPLt.dtype == np.object:
+            if data.MaxSPLt.dtype == np.object_:
                 # There are noise-free days in this dataset
                 converted = pd.to_numeric(data[['MaxSPLt', 'SELt']], errors= "coerce")
                 noisefree = converted.isnull().all(axis= 1)
