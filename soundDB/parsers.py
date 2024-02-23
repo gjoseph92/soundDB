@@ -161,7 +161,6 @@ class NVSPL(Accessor):
                          # sep= ',',
                          parse_dates= True,
                          index_col= index_index,
-                         infer_datetime_format= True,
                          usecols= columns
                          )
 
