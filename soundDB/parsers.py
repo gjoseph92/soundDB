@@ -163,9 +163,6 @@ class NVSPL(Accessor):
                          index_col= index_index,
                          usecols= columns
                          )
-        log_file = "D:\\NPS_NVSPL_DATA\\log_nvspl.txt"
-        with open(log_file, 'a') as log:
-                print(f"File Name {nvsplFileEntry}", file = log)
 
         def pull_datetime(datetime_pattern, datetime):
             try:
@@ -206,12 +203,7 @@ class NVSPL(Accessor):
                 df[presentNumericCols].astype('float32', copy= False, errors= 'ignore')
 
         except KeyError:
-            pass
-
-        if not isinstance(df, pd.DataFrame):
-            with open(log_file, 'a') as log:
-                print(f"File Name {nvsplFileEntry} not converting to dataframe", file = log)
-                
+            pass       
         return df
 
     def prepareState(self, endpoint, endpointParams, timestamps= None, columns= None):
