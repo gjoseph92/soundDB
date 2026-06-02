@@ -164,7 +164,23 @@ class NVSPL(Accessor):
                          usecols= columns
                          )
 
+        def pull_datetime(datetime_pattern, datetime):
+            try:
+                return re.search(datetime_pattern, datetime).group(0)
+            except AttributeError:
+                return None
+    
+        datetime_pattern = '[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}'
+
+        df.index.name = "date"
+
+        # Coerce date/time to date time index
+        index = df.index.get_level_values("date")
+        if not isinstance(index, pd.DatetimeIndex):
+            index = pd.DatetimeIndex([pull_datetime(datetime_pattern, datetime) for datetime in index])
+
         # Make column names slightly nicer
+        df.index = index
         df.index.name = "date"
         renamedColumns = { column: column.replace('H', '').replace('p', '.') for column in df.columns if re.match(r"H\d+p?\d*", column) is not None }
         df.rename(columns= renamedColumns, inplace= True)
@@ -187,8 +203,7 @@ class NVSPL(Accessor):
                 df[presentNumericCols].astype('float32', copy= False, errors= 'ignore')
 
         except KeyError:
-            pass
-
+            pass       
         return df
 
     def prepareState(self, endpoint, endpointParams, timestamps= None, columns= None):
@@ -338,58 +353,111 @@ class LoudEvents(Accessor):
         #     "percent": arr_2d[:, 48:72]
         # })
 
-class Audibility(Accessor):
-    """
-    Resulting DataFrame
-    -------------------
+import os
+import re
+import pandas as pd
 
-    The ``time`` column is dropped, and instead combined with the date specified in the header to give
-    the DataFrame a DatetimeIndex. If present, the ``listener`` field in the header is added as a column.
+class Audibility:
+    def __init__(self, ds, site):
+        self.ds = ds
+        self.site = site
+        self.regex_pattern = r"LA_(?P<site>\w{1,32})_(?P<year>\d{4})_(?P<month>\d{2})_(?P<day>\d{2})_(?P<listener>[\w-]+)\.txt"
 
-    <TODO>
-    """
-    endpointName = "audibility"
-
-    def parse(self, entry):
-        with open(str(entry), "rb") as f:
-            header = None
-            metadata = {}
-            while header is None:
-                line = str(f.readline(), encoding= "utf-8")
-                keyVal = line.split(": ")
-                if len(keyVal) == 2:
-                    metadata[ keyVal[0][1:].lower() ] = keyVal[1].strip()
-                else:
-                    header = line[1:].lower().split()
-
-            df = pd.read_csv(f,
-                             engine= "c",
-                             sep= "\t",
-                             header= None,
-                             comment= "#")
-            df.columns = header
-
-        # Combine date and time to one datetime index
-        day = pd.to_datetime( metadata["date"] )
-        df.index = day + pd.to_timedelta(df.time)
-        df.index.name = "date"
-        df.drop("time", axis= 1)
-
-        # Keep terminology consistent with other types of files
-        df.rename(columns= {"tagdate": "tagDate"}, inplace= True)
+    def parse(self, file_path):
         try:
-            df.tagDate = pd.to_datetime(df.tagDate)
-        except AttributeError:
-            pass
+            # Extract the date and listener from the filename using the static regex pattern
+            filename = os.path.basename(file_path)
+            match = re.match(self.regex_pattern, filename)
+            if not match:
+                raise ValueError (f"File {filename} does not match the expected format.")
+                return None
 
-        if 'listener' in metadata:
-            df["listener"] = metadata["listener"]
+            file_info = match.groupdict()
+            date_str = f"{file_info['year']}-{file_info['month']}-{file_info['day']}"
+            listener = file_info['listener']
 
-        # TODO: should this be included, or just count on getting it from mapper?
-        # if 'site' in metadata:
-        #     df.insert(0, "site", metadata["site"])
+            # Read the data as tab-delimited and skipping the first 5 lines of header
+            df = pd.read_csv(
+                file_path,
+                delimiter='\t',
+                skiprows=5,
+                na_filter=False,
+                header=0
+            )
 
-        return df
+            # Check for the expected number of columns
+            if len(df.columns) < 10:
+                raise ValueError(f"File {file_path} does not have the expected number of columns.")
+            
+            # Rename columns based on the expected format
+            df.columns = ['Time', 'Src1', 'Src2', 'Src3', 'Src4', 'Src5', 'Src6', 'Src7', 'Notes', 'TagDate']
+
+            # Append the date to the 'Time' column
+            df['Time'] = pd.to_datetime(date_str + ' ' + df['Time'], format='%Y-%m-%d %H:%M:%S')
+
+            # Add a new column for 'Listener'
+            df['Listener'] = listener
+
+            return df
+
+        except pd.errors.ParserError as e:
+            print(f"Error parsing {file_path}: {e}")
+            return None
+        except ValueError as ve:
+            print(f"Error in file format {file_path}: {ve}")
+            return None
+
+    def combine(self):
+        """
+        Combines data from all files matching the dataset criteria into a single DataFrame.
+        """
+        all_data = []
+        mismatches = 0  # Counter for files that do not match the format
+
+        if 'audibility' in self.ds.endpoints:
+
+            # Get the entries directly without converting to a list
+            entries = self.ds.audibility(site=self.site)
+            
+            # Count the number of entries by converting to a list temporarily
+            entries_count = sum(1 for _ in entries)
+            print(f"Entries fetched for site {self.site}: {entries_count} entries found.")
+            
+            # Since entries was used above, get it again
+            entries = self.ds.audibility(site=self.site) 
+
+            # Iterate over the entries
+            for entry in entries:
+                file_path = str(entry)
+
+                # Use the static regex pattern for matching
+                filename = os.path.basename(file_path)
+                match = re.match(self.regex_pattern, filename)
+
+                try:
+                    if match:
+                        df = self.parse(file_path)
+                        if df is not None:
+                            all_data.append(df)
+                        else:
+                            raise ValueError(f"File {file_path} could not be processed.")
+                    else:
+                        raise ValueError(f"File {filename} does not match the expected format.")
+                except ValueError as e:
+                    print(f'Error while matching/parsing: {e}')
+
+            print(f"Total entries processed: {entries_count}")
+            print(f"Total mismatches found: {mismatches}")
+
+        else:
+            print("Error: 'audibility' endpoint does not exist in the dataset.")
+            return pd.DataFrame()
+
+        if all_data:
+            combined_df = pd.concat(all_data, ignore_index=True)
+            return combined_df
+        else:
+            return pd.DataFrame()
 
 class DailyPA(Accessor):
     """
